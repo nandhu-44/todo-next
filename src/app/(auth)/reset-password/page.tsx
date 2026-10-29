@@ -36,13 +36,13 @@ function ResetForm() {
     }
   }
 
-  if (valid === null) return <p className="text-center text-sm text-slate-400">Checking link…</p>;
+  if (valid === null) return <p className="text-center text-sm text-muted-foreground">Checking link…</p>;
   if (!valid)
     return (
       <div className="space-y-4 text-center">
-        <ShieldAlert className="mx-auto size-12 text-rose-400" />
-        <p className="text-sm text-slate-600 dark:text-slate-300">This reset link is invalid or has expired.</p>
-        <Link href="/forgot-password" className="text-sm font-medium text-sky-500 hover:underline">Request a new link</Link>
+        <ShieldAlert className="mx-auto size-12 text-destructive" />
+        <p className="text-sm text-muted-foreground">This reset link is invalid or has expired.</p>
+        <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">Request a new link</Link>
       </div>
     );
   return (

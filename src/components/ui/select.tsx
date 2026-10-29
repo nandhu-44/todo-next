@@ -11,13 +11,13 @@ export const SelectTrigger = React.forwardRef<HTMLButtonElement, React.Component
     <S.Trigger
       ref={ref}
       className={cn(
-        "flex h-10 items-center justify-between gap-2 rounded-xl border border-slate-300/70 bg-white/80 px-3 text-sm outline-none transition focus-visible:ring-4 focus-visible:ring-sky-400/20 data-[state=open]:border-sky-400 dark:border-white/10 dark:bg-black/30",
+        "flex h-10 items-center justify-between gap-2 rounded-xl border border-border bg-background/60 px-3 text-sm outline-none transition focus-visible:ring-4 focus-visible:ring-primary/20 data-[state=open]:border-primary",
         className,
       )}
       {...props}
     >
       {children}
-      <S.Icon><ChevronDown className="size-4 text-slate-400" /></S.Icon>
+      <S.Icon><ChevronDown className="size-4 text-muted-foreground" /></S.Icon>
     </S.Trigger>
   ),
 );
@@ -32,7 +32,7 @@ export function SelectContent({ className, children, ...props }: React.Component
         position="popper"
         sideOffset={6}
         className={cn(
-          "z-50 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 dark:border-white/10 dark:bg-[#161b38]",
+          "z-50 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95",
           className,
         )}
         {...props}
@@ -47,10 +47,10 @@ export const SelectItem = React.forwardRef<HTMLDivElement, React.ComponentProps<
   ({ className, children, ...props }, ref) => (
     <S.Item
       ref={ref}
-      className={cn("relative flex cursor-pointer select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none data-[highlighted]:bg-sky-500/15", className)}
+      className={cn("relative flex cursor-pointer select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm outline-none data-[highlighted]:bg-primary/15", className)}
       {...props}
     >
-      <S.ItemIndicator className="absolute left-2.5"><Check className="size-4 text-sky-500" /></S.ItemIndicator>
+      <S.ItemIndicator className="absolute left-2.5"><Check className="size-4 text-primary" /></S.ItemIndicator>
       <S.ItemText>{children}</S.ItemText>
     </S.Item>
   ),

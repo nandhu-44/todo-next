@@ -1,12 +1,13 @@
 "use client";
 import { AnimatePresence, Reorder, motion } from "framer-motion";
-import { ArrowDownUp, ChevronDown, ClipboardList, Eraser, LogOut, Plus, Search, SearchX, Sparkles, X } from "lucide-react";
+import { ArrowDownUp, ChevronDown, ClipboardList, Eraser, LogOut, Plus, Search, SearchX, Settings, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { daysUntil } from "@/lib/dates";
 import type { PublicUser, Todo } from "@/lib/types";
+import Logo from "./Logo";
 import Stats from "./Stats";
 import ThemeToggle from "./ThemeToggle";
 import { Button } from "./ui/button";
@@ -207,31 +208,31 @@ export default function TodoApp({ user }: { user: PublicUser }) {
       {/* header */}
       <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/checkmark.png" alt="" className="size-9" />
+          <Logo className="size-9" />
           <div className="min-w-0">
-            <h1 className="font-supercell text-2xl tracking-wide text-sky-500 dark:text-sky-300">ToDo App</h1>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{greeting}, {user.name.split(" ")[0]} 👋</p>
+            <h1 className="heading text-2xl text-primary">ToDo App</h1>
+            <p className="truncate text-xs text-muted-foreground">{greeting}, {user.name.split(" ")[0]}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="glass" className="h-10 gap-1.5 px-2 pr-2.5" aria-label="Account menu">
-                <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-500 text-sm text-white">
+              <Button variant="outline" className="h-10 gap-1.5 px-2 pr-2.5" aria-label="Account menu">
+                <span className="grid size-7 place-items-center rounded-lg bg-primary text-sm text-primary-foreground">
                   {user.name.charAt(0).toUpperCase()}
                 </span>
-                <ChevronDown className="text-slate-400" />
+                <ChevronDown className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuLabel>
-                <span className="block font-medium text-slate-700 dark:text-slate-100">{user.name}</span>
+                <span className="block font-medium text-foreground">{user.name}</span>
                 {user.email}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={logout} className="text-rose-500 dark:text-rose-300"><LogOut /> Sign out</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push("/settings")}><Settings /> Account settings</DropdownMenuItem>
+              <DropdownMenuItem onSelect={logout} className="text-destructive"><LogOut /> Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -244,7 +245,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           <Button size="lg" onClick={openAdd}>
             <Plus /> Add todo
-            <kbd className="ml-1 hidden rounded bg-white/20 px-1.5 text-xs sm:inline">N</kbd>
+            <kbd className="ml-1 hidden rounded bg-primary-foreground/20 px-1.5 text-xs sm:inline">N</kbd>
           </Button>
           <Button size="lg" onClick={() => (completedCount ? setClearOpen(true) : notify.warning("No completed todos to clear"))}>
             <Eraser /> Clear completed
@@ -252,20 +253,20 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         </div>
 
         {/* search / filter / sort */}
-        <div className="glass space-y-3 rounded-2xl p-3">
+        <div className="surface space-y-3 p-3">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by title or tag" aria-label="Search todos" className="pl-9 pr-8" />
               {query && (
-                <button onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <button onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   <X className="size-4" />
                 </button>
               )}
             </div>
             <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
               <SelectTrigger aria-label="Sort todos" className="w-40 sm:w-44">
-                <span className="flex items-center gap-2"><ArrowDownUp className="size-4 text-slate-400" /><SelectValue /></span>
+                <span className="flex items-center gap-2"><ArrowDownUp className="size-4 text-muted-foreground" /><SelectValue /></span>
               </SelectTrigger>
               <SelectContent>
                 {SORTS.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
@@ -282,13 +283,13 @@ export default function TodoApp({ user }: { user: PublicUser }) {
             />
             <AnimatePresence>
               {tag && (
-                <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setTag(null)} className="flex items-center gap-1 rounded-full bg-sky-500 px-2.5 py-1 text-xs text-white">
+                <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setTag(null)} className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs text-primary-foreground">
                   #{tag} <X className="size-3" />
                 </motion.button>
               )}
             </AnimatePresence>
             {!tag && allTags.slice(0, 6).map((t) => (
-              <button key={t} onClick={() => setTag(t)} className="rounded-full bg-slate-200/80 px-2.5 py-1 text-xs text-slate-600 transition hover:bg-sky-500/20 dark:bg-white/10 dark:text-slate-300">
+              <button key={t} onClick={() => setTag(t)} className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition hover:bg-primary/15 hover:text-primary">
                 #{t}
               </button>
             ))}
@@ -299,8 +300,8 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         {loading ? (
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="relative h-[76px] overflow-hidden rounded-2xl bg-slate-200/70 dark:bg-white/5">
-                <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent dark:via-white/10" />
+              <div key={i} className="relative h-[76px] overflow-hidden rounded-2xl bg-muted/60">
+                <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
               </div>
             ))}
           </div>
@@ -316,7 +317,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
               </AnimatePresence>
             </Reorder.Group>
             {canDrag && visible.length > 1 && (
-              <p className="pt-1 text-center text-xs text-slate-400">Drag the handle to reorder</p>
+              <p className="pt-1 text-center text-xs text-muted-foreground">Drag the handle to reorder</p>
             )}
           </>
         )}
@@ -334,8 +335,8 @@ export default function TodoApp({ user }: { user: PublicUser }) {
             </>
           }
         >
-          <p className="font-supercell text-lg tracking-wide">&ldquo;{deleting?.title}&rdquo; will be removed.</p>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">You can undo this right after.</p>
+          <p className="heading text-lg">&ldquo;{deleting?.title}&rdquo; will be removed.</p>
+          <p className="mt-1 text-sm text-muted-foreground">You can undo this right after.</p>
         </AlertDialogContent>
       </AlertDialog>
 
@@ -349,7 +350,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
             </>
           }
         >
-          <p className="font-supercell text-lg tracking-wide">
+          <p className="heading text-lg">
             Remove {completedCount} completed {completedCount === 1 ? "todo" : "todos"}?
           </p>
         </AlertDialogContent>
@@ -361,12 +362,12 @@ export default function TodoApp({ user }: { user: PublicUser }) {
 function EmptyState({ filtering, onAdd, onReset }: { filtering: boolean; onAdd: () => void; onReset: () => void }) {
   const Icon = filtering ? SearchX : ClipboardList;
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="glass flex flex-col items-center gap-3 rounded-2xl px-6 py-14 text-center">
+    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="surface flex flex-col items-center gap-3 px-6 py-14 text-center">
       <motion.div animate={{ y: [0, -8, 0] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}>
-        <Icon className="size-14 text-sky-400" />
+        <Icon className="size-14 text-primary" />
       </motion.div>
-      <h2 className="font-supercell text-2xl tracking-wide">{filtering ? "Nothing matches" : "All clear!"}</h2>
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+      <h2 className="heading text-2xl">{filtering ? "Nothing matches" : "Nothing to do"}</h2>
+      <p className="text-sm text-muted-foreground">
         {filtering ? "Try a different search or filter." : "Nothing on your list. Add something like \u201cBook dentist appointment\u201d to get started."}
       </p>
       <Button onClick={filtering ? onReset : onAdd}>

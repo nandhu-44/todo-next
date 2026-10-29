@@ -18,8 +18,8 @@ export function DatePicker({ value, onChange }: { value: string; onChange: (v: s
           <button
             type="button"
             className={cn(
-              "flex h-10 flex-1 items-center gap-2 rounded-xl border border-slate-300/70 bg-white/80 px-3.5 text-left text-sm outline-none transition focus-visible:ring-4 focus-visible:ring-sky-400/20 data-[state=open]:border-sky-400 dark:border-white/10 dark:bg-black/30",
-              !selected && "text-slate-400 dark:text-slate-500",
+              "flex h-10 flex-1 items-center gap-2 rounded-xl border border-border bg-background/60 px-3.5 text-left text-sm outline-none transition focus-visible:ring-4 focus-visible:ring-primary/20 data-[state=open]:border-primary",
+              !selected && "text-muted-foreground/70",
             )}
           >
             <CalendarDays className="size-4" />
@@ -27,7 +27,7 @@ export function DatePicker({ value, onChange }: { value: string; onChange: (v: s
           </button>
         </Popover.Trigger>
         {selected && (
-          <button type="button" onClick={() => onChange("")} aria-label="Clear due date" className="grid size-10 place-items-center rounded-xl text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10">
+          <button type="button" onClick={() => onChange("")} aria-label="Clear due date" className="grid size-10 place-items-center rounded-xl text-muted-foreground hover:bg-muted">
             <X className="size-4" />
           </button>
         )}
@@ -36,7 +36,7 @@ export function DatePicker({ value, onChange }: { value: string; onChange: (v: s
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-[70] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 dark:border-white/10 dark:bg-[#161b38]"
+          className="z-[70] rounded-2xl border border-border bg-popover p-3 shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
         >
           <DayPicker
             mode="single"

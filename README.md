@@ -21,3 +21,10 @@ With no `MONGO_URI`, data lives in `./data/db.json` (zero setup). Set `MONGO_URI
 With no SMTP settings, password-reset links are printed to the server console (and shown on the page in dev).
 
 Existing users from the MERN app are not migrated (passwords were stored with a different scheme) — sign up again.
+
+## Security & accounts
+- **Google sign-in** (OAuth 2.0 code flow with PKCE + state; ID token verified against Google's keys). Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+  and add `<APP_URL>/api/auth/google/callback` as an authorised redirect URI. The button only appears when configured.
+- **Two-step verification (TOTP)** with QR setup, replay protection and 8 one-time recovery codes. Secrets are AES-256-GCM encrypted at rest.
+- **Account settings** (`/settings`): name, change/set password, 2FA, connected Google account, delete account.
+- Login, 2FA and sensitive account actions are rate-limited (in-memory; use a shared store such as Redis if you run multiple instances).

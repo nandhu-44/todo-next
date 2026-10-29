@@ -7,29 +7,59 @@
 @tailwind components;
 @tailwind utilities;
 
-html { color-scheme: light; }
-html.dark { color-scheme: dark; }
+@layer base {
+  :root {
+    --background: 36 22% 96%;
+    --foreground: 255 18% 11%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --muted: 36 14% 91%;
+    --muted-foreground: 255 8% 40%;
+    --border: 36 12% 84%;
+    --primary: 258 72% 54%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 352 78% 48%;
+    --p-high: 14 88% 52%;
+    --p-medium: 44 88% 46%;
+    --p-low: 205 18% 52%;
+  }
+  .dark {
+    --background: 255 16% 6%;
+    --foreground: 36 20% 94%;
+    --card: 255 14% 9.5%;
+    --popover: 255 14% 11%;
+    --muted: 255 12% 15%;
+    --muted-foreground: 255 8% 64%;
+    --border: 255 11% 18%;
+    --primary: 258 86% 66%;
+    --primary-foreground: 255 30% 8%;
+    --destructive: 352 82% 62%;
+    --p-high: 14 90% 60%;
+    --p-medium: 44 90% 56%;
+    --p-low: 205 22% 62%;
+  }
 
-body {
-  font-family: "Poppins", sans-serif;
-  @apply min-h-screen bg-slate-50 text-slate-800 antialiased dark:bg-[#0a0d1f] dark:text-slate-100;
-  transition: background-color 0.4s;
-}
-
-@layer components {
-  .glass {
-    @apply border border-white/60 bg-white/70 shadow-xl shadow-indigo-500/5 backdrop-blur-xl
-      dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/30;
+  html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+  * { @apply border-border; }
+  body {
+    font-family: "Poppins", sans-serif;
+    @apply min-h-screen bg-background text-foreground antialiased;
   }
 }
 
-/* Animated aurora background ------------------------------------------- */
-.aurora-grid {
-  background-image:
-    linear-gradient(to right, rgb(148 163 184 / 0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(148 163 184 / 0.12) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 100%);
+@layer components {
+  .surface {
+    @apply rounded-2xl border border-border bg-card/80 shadow-sm backdrop-blur-md;
+  }
+  .heading { @apply font-supercell tracking-wide; }
+}
+
+/* Calendar theming (react-day-picker) */
+.rdp-root {
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-accent-background-color: hsl(var(--primary) / 0.14);
+  color: hsl(var(--foreground));
 }
 
 @media (prefers-reduced-motion: reduce) {
