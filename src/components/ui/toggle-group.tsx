@@ -18,14 +18,14 @@ export function SegmentedControl<V extends string>({
       aria-label={label}
       // Radix emits "" when the active item is clicked again; ignore it so one option always stays selected.
       onValueChange={(v) => v && onChange(v as V)}
-      className={cn("inline-flex rounded-xl bg-slate-200/70 p-1 dark:bg-black/30", className)}
+      className={cn("inline-flex rounded-xl bg-muted p-1", className)}
     >
       {options.map((o) => (
-        <T.Item key={o.value} value={o.value} className="relative flex-1 rounded-lg px-3 py-1.5 font-supercell text-sm tracking-wide outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
+        <T.Item key={o.value} value={o.value} className="relative flex-1 rounded-lg px-3 py-1.5 font-supercell text-sm tracking-wide outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {value === o.value && (
-            <motion.span layoutId={id} className={cn("absolute inset-0 rounded-lg bg-sky-500", o.activeClass)} transition={{ type: "spring", stiffness: 500, damping: 35 }} />
+            <motion.span layoutId={id} className={cn("absolute inset-0 rounded-lg bg-primary", o.activeClass)} transition={{ type: "spring", stiffness: 500, damping: 35 }} />
           )}
-          <span className={cn("relative", value === o.value ? "text-white" : "text-slate-500 dark:text-slate-400")}>{o.label}</span>
+          <span className={cn("relative", value === o.value ? "text-primary-foreground" : "text-muted-foreground")}>{o.label}</span>
         </T.Item>
       ))}
     </T.Root>

@@ -10,7 +10,7 @@ export function Tip({ label, children }: { label: string; children: React.ReactN
       <T.Portal>
         <T.Content
           sideOffset={6}
-          className="z-[60] rounded-lg bg-slate-900 px-2.5 py-1 text-xs text-white shadow-lg data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 dark:bg-white dark:text-slate-900"
+          className="z-[60] rounded-lg bg-foreground px-2.5 py-1 text-xs text-background shadow-lg data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95"
         >
           {label}
         </T.Content>

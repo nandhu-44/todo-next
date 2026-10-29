@@ -6,7 +6,18 @@ export interface UserDoc {
   id: string;
   name: string;
   email: string;
-  passwordHash: string;
+  /** null for accounts created through Google that never set a password */
+  passwordHash: string | null;
+  googleId?: string | null;
+  /** AES-GCM encrypted base32 secret of an enabled authenticator */
+  totpSecret?: string | null;
+  totpEnabled?: boolean;
+  /** secret generated during setup but not yet confirmed */
+  totpPending?: string | null;
+  /** last accepted time step, to reject replayed codes */
+  totpLastStep?: number;
+  /** sha256 hashes of unused recovery codes */
+  recoveryCodes?: string[];
   createdAt: string;
 }
 export type TodoDoc = Todo & { userId: string };

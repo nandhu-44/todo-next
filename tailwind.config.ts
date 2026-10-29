@@ -5,6 +5,17 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      colors: {
+        background: "hsl(var(--background) / <alpha-value>)",
+        foreground: "hsl(var(--foreground) / <alpha-value>)",
+        card: "hsl(var(--card) / <alpha-value>)",
+        popover: "hsl(var(--popover) / <alpha-value>)",
+        muted: { DEFAULT: "hsl(var(--muted) / <alpha-value>)", foreground: "hsl(var(--muted-foreground) / <alpha-value>)" },
+        border: "hsl(var(--border) / <alpha-value>)",
+        primary: { DEFAULT: "hsl(var(--primary) / <alpha-value>)", foreground: "hsl(var(--primary-foreground) / <alpha-value>)" },
+        destructive: { DEFAULT: "hsl(var(--destructive) / <alpha-value>)", foreground: "0 0% 100%" },
+        prio: { high: "hsl(var(--p-high) / <alpha-value>)", medium: "hsl(var(--p-medium) / <alpha-value>)", low: "hsl(var(--p-low) / <alpha-value>)" },
+      },
       fontFamily: {
         supercell: ["Lilita One", "sans-serif"],
         poppins: ["Poppins", "sans-serif"],

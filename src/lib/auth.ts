@@ -15,7 +15,15 @@ function secret() {
   return new TextEncoder().encode(s);
 }
 
-export const toPublic = (u: UserDoc): PublicUser => ({ id: u.id, name: u.name, email: u.email });
+export const toPublic = (u: UserDoc): PublicUser => ({
+  id: u.id,
+  name: u.name,
+  email: u.email,
+  hasPassword: !!u.passwordHash,
+  google: !!u.googleId,
+  totpEnabled: !!u.totpEnabled,
+  recoveryLeft: u.recoveryCodes?.length ?? 0,
+});
 
 export async function createSession(userId: string, remember: boolean) {
   const days = remember ? 30 : 1;
@@ -33,6 +41,40 @@ export async function createSession(userId: string, remember: boolean) {
     // session cookie when "remember me" is off
     ...(remember ? { maxAge: days * 86400 } : {}),
   });
+}
+
+/* A short-lived cookie proving the password (or Google) step passed; the 2FA code finishes the login. */
+const PENDING = "todo_2fa";
+
+export async function createPending(userId: string, remember: boolean) {
+  const token = await new SignJWT({ purpose: "2fa", remember })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setExpirationTime("5m")
+    .sign(secret());
+  (await cookies()).set(PENDING, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 300,
+  });
+}
+
+export async function readPending(): Promise<{ userId: string; remember: boolean } | null> {
+  const token = (await cookies()).get(PENDING)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    if (payload.purpose !== "2fa" || !payload.sub) return null;
+    return { userId: payload.sub, remember: payload.remember === true };
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPending() {
+  (await cookies()).delete(PENDING);
 }
 
 export async function destroySession() {

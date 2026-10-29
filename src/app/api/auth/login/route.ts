@@ -1,16 +1,27 @@
 import bcrypt from "bcryptjs";
-import { createSession, fail, json, toPublic } from "@/lib/auth";
+import { clearPending, createPending, createSession, fail, json, toPublic } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { allow, clientIp } from "@/lib/rateLimit";
 
 export async function POST(req: Request) {
   const b = await req.json().catch(() => null);
   const email = String(b?.email ?? "").trim().toLowerCase();
   const password = String(b?.password ?? "");
+
+  if (!allow(`login:${clientIp(req)}:${email}`, 8, 15 * 60_000))
+    return fail("Too many attempts. Try again in a few minutes.", 429);
+
   const user = email ? await (await getDb()).users.findOne({ email }) : null;
+  // Always run a bcrypt compare so timing doesn't reveal whether the account exists.
+  const ok = await bcrypt.compare(password, user?.passwordHash ?? "$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvali");
+  if (!user || !user.passwordHash || !ok) return fail("Incorrect email or password", 401);
 
-  if (!user || !(await bcrypt.compare(password, user.passwordHash)))
-    return fail("Incorrect email or password", 401);
-
-  await createSession(user.id, b?.remember !== false);
+  const remember = b?.remember !== false;
+  if (user.totpEnabled) {
+    await createPending(user.id, remember);
+    return json({ twoFactor: true });
+  }
+  await clearPending();
+  await createSession(user.id, remember);
   return json({ user: toPublic(user) });
 }

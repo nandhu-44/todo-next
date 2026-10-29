@@ -12,9 +12,9 @@ import { SegmentedControl } from "./ui/toggle-group";
 export type TodoDraft = Pick<Todo, "title" | "description" | "priority" | "dueDate" | "tags">;
 
 const PRIORITIES = [
-  { value: "low" as Priority, label: "Low", activeClass: "bg-emerald-500" },
-  { value: "medium" as Priority, label: "Medium", activeClass: "bg-amber-500" },
-  { value: "high" as Priority, label: "High", activeClass: "bg-rose-500" },
+  { value: "low" as Priority, label: "Low", activeClass: "bg-prio-low" },
+  { value: "medium" as Priority, label: "Medium", activeClass: "bg-prio-medium" },
+  { value: "high" as Priority, label: "High", activeClass: "bg-prio-high" },
 ];
 
 interface Props {
@@ -100,9 +100,9 @@ export default function TodoForm({ open, todo, allTags, onClose, onSubmit }: Pro
               placeholder="Renew car insurance"
               maxLength={120}
               aria-invalid={titleError}
-              className={titleError ? "border-rose-400 ring-4 ring-rose-400/20" : undefined}
+              className={titleError ? "border-destructive ring-4 ring-destructive/20" : undefined}
             />
-            {titleError && <p className="text-xs text-rose-500">Give your todo a title.</p>}
+            {titleError && <p className="text-xs text-destructive">Give your todo a title.</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -129,9 +129,9 @@ export default function TodoForm({ open, todo, allTags, onClose, onSubmit }: Pro
 
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5"><Hash className="size-4" /> Tags</Label>
-            <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-slate-300/70 bg-white/80 px-3 py-1.5 focus-within:border-sky-400 focus-within:ring-4 focus-within:ring-sky-400/20 dark:border-white/10 dark:bg-black/30">
+            <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-border bg-background/60 px-3 py-1.5 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/20">
               {tags.map((t) => (
-                <span key={t} className="flex items-center gap-1 rounded-full bg-sky-500/15 px-2.5 py-0.5 text-xs text-sky-600 dark:text-sky-300">
+                <span key={t} className="flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs text-primary">
                   #{t}
                   <button type="button" aria-label={`Remove ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>
                     <X className="size-3" />
@@ -149,13 +149,13 @@ export default function TodoForm({ open, todo, allTags, onClose, onSubmit }: Pro
                 }}
                 placeholder={tags.length ? "" : "work, errands, health"}
                 aria-label="Add a tag"
-                className="min-w-24 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="min-w-24 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
               />
             </div>
             {suggestions.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {suggestions.map((s) => (
-                  <button key={s} type="button" onClick={() => addTag(s)} className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs hover:bg-sky-500/20 dark:bg-white/10">
+                  <button key={s} type="button" onClick={() => addTag(s)} className="rounded-full bg-muted px-2.5 py-0.5 text-xs hover:bg-primary/15">
                     #{s}
                   </button>
                 ))}

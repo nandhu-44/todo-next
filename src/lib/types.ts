@@ -17,4 +17,8 @@ export interface PublicUser {
   id: string;
   name: string;
   email: string;
+  hasPassword: boolean;
+  google: boolean;
+  totpEnabled: boolean;
+  recoveryLeft: number;
 }
