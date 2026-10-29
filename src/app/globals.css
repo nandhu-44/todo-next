@@ -1,0 +1,46 @@
+@import "@fontsource/lilita-one/400.css";
+@import "@fontsource/poppins/300.css";
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
+body {
+  font-family: "Poppins", sans-serif;
+  @apply min-h-screen bg-slate-50 text-slate-800 antialiased dark:bg-[#0a0d1f] dark:text-slate-100;
+  transition: background-color 0.4s;
+}
+
+@layer components {
+  .glass {
+    @apply border border-white/60 bg-white/70 shadow-xl shadow-indigo-500/5 backdrop-blur-xl
+      dark:border-white/10 dark:bg-white/[0.06] dark:shadow-black/30;
+  }
+  .field {
+    @apply w-full rounded-xl border border-slate-300/70 bg-white/80 px-3.5 py-2.5 text-sm text-slate-800
+      placeholder-slate-400 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-400/20
+      dark:border-white/10 dark:bg-black/30 dark:text-white dark:placeholder-slate-500 dark:focus:border-sky-400;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-supercell tracking-wide
+      text-white transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+}
+
+/* Animated aurora background ------------------------------------------- */
+.aurora-grid {
+  background-image:
+    linear-gradient(to right, rgb(148 163 184 / 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(148 163 184 / 0.12) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
