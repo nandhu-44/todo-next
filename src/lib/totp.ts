@@ -7,7 +7,7 @@ import type { UserDoc } from "./db";
 const PERIOD = 30;
 
 const make = (secret: string, label: string) =>
-  new OTPAuth.TOTP({ issuer: "ToDo App", label, algorithm: "SHA1", digits: 6, period: PERIOD, secret: OTPAuth.Secret.fromBase32(secret) });
+  new OTPAuth.TOTP({ issuer: "ToDo Next", label, algorithm: "SHA1", digits: 6, period: PERIOD, secret: OTPAuth.Secret.fromBase32(secret) });
 
 export function newSecret() {
   return new OTPAuth.Secret({ size: 20 }).base32;

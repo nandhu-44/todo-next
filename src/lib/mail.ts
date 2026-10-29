@@ -16,7 +16,7 @@ export async function sendResetMail(to: string, link: string): Promise<boolean> 
   await transport.sendMail({
     from: process.env.MAIL_FROM || process.env.SMTP_USER,
     to,
-    subject: "Reset your ToDo App password",
+    subject: "Reset your ToDo Next password",
     html: `<p>Click the link below to choose a new password. It expires in 1 hour.</p><p><a href="${link}">${link}</a></p>`,
   });
   return true;

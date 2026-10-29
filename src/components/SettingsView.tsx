@@ -307,8 +307,8 @@ function RecoveryDialog({ codes, onClose }: { codes: string[] | null; onClose: (
             variant="secondary"
             onClick={() => {
               const a = document.createElement("a");
-              a.href = URL.createObjectURL(new Blob([`ToDo App recovery codes\n\n${text}\n`], { type: "text/plain" }));
-              a.download = "todo-app-recovery-codes.txt";
+              a.href = URL.createObjectURL(new Blob([`ToDo Next recovery codes\n\n${text}\n`], { type: "text/plain" }));
+              a.download = "todo-next-recovery-codes.txt";
               a.click();
               URL.revokeObjectURL(a.href);
             }}
