@@ -62,6 +62,13 @@
   color: hsl(var(--foreground));
 }
 
+/* Reduced motion: no looping animation at all (a ~0ms infinite loop would strobe), and near-instant transitions. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  *, *::before, *::after {
+    animation-iteration-count: 1 !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-soft-pulse, .animate-float, .animate-float-slow { animation: none !important; }
 }
