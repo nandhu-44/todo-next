@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
 import { useState } from "react";
 import { AuthShell, Field, FormError, SubmitButton } from "@/components/AuthShell";
+import { FormCheckbox } from "@/components/ui/checkbox";
 import { api } from "@/lib/api";
 
 export default function SignIn() {
@@ -32,13 +33,10 @@ export default function SignIn() {
   return (
     <AuthShell title="Welcome back">
       <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Email" icon={Mail} name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
-        <Field label="Password" icon={Lock} name="password" type="password" placeholder="••••••••" autoComplete="current-password" required />
+        <Field label="Email" icon={Mail} name="email" type="email" placeholder="john.doe@example.com" autoComplete="email" required />
+        <Field label="Password" icon={Lock} name="password" type="password" placeholder="Enter your password" autoComplete="current-password" required />
         <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center gap-2">
-            <input type="checkbox" name="remember" defaultChecked className="size-4 rounded accent-sky-500" />
-            Remember me
-          </label>
+          <FormCheckbox id="remember" name="remember" defaultChecked>Remember me</FormCheckbox>
           <Link href="/forgot-password" className="text-sky-500 hover:underline">Forgot password?</Link>
         </div>
         <FormError message={error} />

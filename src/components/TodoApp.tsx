@@ -1,17 +1,20 @@
 "use client";
 import { AnimatePresence, Reorder, motion } from "framer-motion";
-import {
-  ArrowDownUp, ClipboardList, LogOut, Plus, Search, SearchX, Sparkles, X, Eraser,
-} from "lucide-react";
+import { ArrowDownUp, ChevronDown, ClipboardList, Eraser, LogOut, Plus, Search, SearchX, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { daysUntil } from "@/lib/dates";
 import type { PublicUser, Todo } from "@/lib/types";
-import Modal from "./Modal";
 import Stats from "./Stats";
 import ThemeToggle from "./ThemeToggle";
-import { useToast } from "./Toasts";
+import { Button } from "./ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent } from "./ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { Input } from "./ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { SegmentedControl } from "./ui/toggle-group";
 import TodoForm, { type TodoDraft } from "./TodoForm";
 import TodoItem from "./TodoItem";
 
@@ -29,7 +32,6 @@ const SORTS: { id: Sort; label: string }[] = [
 
 export default function TodoApp({ user }: { user: PublicUser }) {
   const router = useRouter();
-  const toast = useToast();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
@@ -46,9 +48,9 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     try {
       setTodos((await api<{ todos: Todo[] }>("/api/todos")).todos);
     } catch (e) {
-      toast({ kind: "error", title: (e as Error).message });
+      notify.error((e as Error).message);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     reload().finally(() => setLoading(false));
@@ -77,18 +79,18 @@ export default function TodoApp({ user }: { user: PublicUser }) {
       setTodos((l) => l.map((t) => (t.id === id ? { ...t, ...draft } : t)));
       try {
         await api(`/api/todos/${id}`, { method: "PATCH", body: draft });
-        toast({ title: "Todo updated" });
+        notify.success("Todo updated");
       } catch (e) {
-        toast({ kind: "error", title: (e as Error).message });
+        notify.error((e as Error).message);
         reload();
       }
     } else {
       try {
         const { todo } = await api<{ todo: Todo }>("/api/todos", { method: "POST", body: draft });
         setTodos((l) => [todo, ...l]);
-        toast({ title: "Todo added" });
+        notify.success("Todo added");
       } catch (e) {
-        toast({ kind: "error", title: (e as Error).message });
+        notify.error((e as Error).message);
       }
     }
   }
@@ -100,7 +102,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     try {
       await api(`/api/todos/${t.id}`, { method: "PATCH", body: { completed } });
     } catch (e) {
-      toast({ kind: "error", title: (e as Error).message });
+      notify.error((e as Error).message);
       reload();
     }
   }
@@ -110,22 +112,19 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     setTodos((l) => l.filter((x) => x.id !== t.id));
     try {
       await api(`/api/todos/${t.id}`, { method: "DELETE" });
-      toast({
-        title: "Todo deleted",
-        action: {
-          label: "Undo",
-          onClick: async () => {
-            try {
-              await api("/api/todos", { method: "POST", body: { ...t, restore: t } });
-              reload();
-            } catch (e) {
-              toast({ kind: "error", title: (e as Error).message });
-            }
-          },
+      notify.success("Todo deleted", {
+        label: "Undo",
+        onClick: async () => {
+          try {
+            await api("/api/todos", { method: "POST", body: { ...t, restore: t } });
+            reload();
+          } catch (e) {
+            notify.error((e as Error).message);
+          }
         },
       });
     } catch (e) {
-      toast({ kind: "error", title: (e as Error).message });
+      notify.error((e as Error).message);
       reload();
     }
   }
@@ -136,18 +135,15 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     setTodos((l) => l.filter((t) => !t.completed));
     try {
       await api("/api/todos/clear-completed", { method: "POST" });
-      toast({
-        title: `Cleared ${gone.length} completed ${gone.length === 1 ? "todo" : "todos"}`,
-        action: {
-          label: "Undo",
-          onClick: async () => {
-            await Promise.all(gone.map((t) => api("/api/todos", { method: "POST", body: { ...t, restore: t } }).catch(() => {})));
-            reload();
-          },
+      notify.success(`Cleared ${gone.length} completed ${gone.length === 1 ? "todo" : "todos"}`, {
+        label: "Undo",
+        onClick: async () => {
+          await Promise.all(gone.map((t) => api("/api/todos", { method: "POST", body: { ...t, restore: t } }).catch(() => {})));
+          reload();
         },
       });
     } catch (e) {
-      toast({ kind: "error", title: (e as Error).message });
+      notify.error((e as Error).message);
       reload();
     }
   }
@@ -159,7 +155,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     try {
       await api("/api/todos/reorder", { method: "POST", body: { ids: todos.map((t) => t.id) } });
     } catch (e) {
-      toast({ kind: "error", title: (e as Error).message });
+      notify.error((e as Error).message);
       reload();
     }
   }
@@ -220,9 +216,24 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <motion.button whileTap={{ scale: 0.9 }} onClick={logout} aria-label="Sign out" title="Sign out" className="glass grid size-10 place-items-center rounded-xl text-rose-500 dark:text-rose-300">
-            <LogOut className="size-5" />
-          </motion.button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="glass" className="h-10 gap-1.5 px-2 pr-2.5" aria-label="Account menu">
+                <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-500 text-sm text-white">
+                  {user.name.charAt(0).toUpperCase()}
+                </span>
+                <ChevronDown className="text-slate-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuLabel>
+                <span className="block font-medium text-slate-700 dark:text-slate-100">{user.name}</span>
+                {user.email}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={logout} className="text-rose-500 dark:text-rose-300"><LogOut /> Sign out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </motion.header>
 
@@ -231,17 +242,13 @@ export default function TodoApp({ user }: { user: PublicUser }) {
 
         {/* actions */}
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }} onClick={openAdd} className="btn bg-gradient-to-r from-sky-500 to-indigo-500 text-lg shadow-lg shadow-sky-500/30">
-            <Plus className="size-5" /> Add Todo
+          <Button size="lg" onClick={openAdd}>
+            <Plus /> Add todo
             <kbd className="ml-1 hidden rounded bg-white/20 px-1.5 text-xs sm:inline">N</kbd>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
-            onClick={() => (completedCount ? setClearOpen(true) : toast({ kind: "warning", title: "No completed todos to clear" }))}
-            className="btn bg-gradient-to-r from-sky-500 to-indigo-500 text-lg shadow-lg shadow-sky-500/30"
-          >
-            <Eraser className="size-5" /> Clear Completed
-          </motion.button>
+          </Button>
+          <Button size="lg" onClick={() => (completedCount ? setClearOpen(true) : notify.warning("No completed todos to clear"))}>
+            <Eraser /> Clear completed
+          </Button>
         </div>
 
         {/* search / filter / sort */}
@@ -249,30 +256,30 @@ export default function TodoApp({ user }: { user: PublicUser }) {
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search todos…  ( / )" className="field pl-9 pr-8" />
+              <Input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by title or tag" aria-label="Search todos" className="pl-9 pr-8" />
               {query && (
                 <button onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   <X className="size-4" />
                 </button>
               )}
             </div>
-            <label className="relative">
-              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort todos" className="field w-auto cursor-pointer pl-9 pr-3">
-                {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-            </label>
+            <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+              <SelectTrigger aria-label="Sort todos" className="w-40 sm:w-44">
+                <span className="flex items-center gap-2"><ArrowDownUp className="size-4 text-slate-400" /><SelectValue /></span>
+              </SelectTrigger>
+              <SelectContent>
+                {SORTS.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-xl bg-slate-200/70 p-1 dark:bg-black/30">
-              {(["all", "active", "done"] as Filter[]).map((f) => (
-                <button key={f} onClick={() => setFilter(f)} className="relative rounded-lg px-3 py-1 font-supercell text-sm capitalize tracking-wide">
-                  {filter === f && <motion.span layoutId="filter-pill" className="absolute inset-0 rounded-lg bg-sky-500" transition={{ type: "spring", stiffness: 500, damping: 35 }} />}
-                  <span className={`relative ${filter === f ? "text-white" : "text-slate-500 dark:text-slate-400"}`}>{f}</span>
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              label="Filter todos"
+              value={filter}
+              onChange={setFilter}
+              options={[{ value: "all", label: "All" }, { value: "active", label: "Active" }, { value: "done", label: "Done" }]}
+            />
             <AnimatePresence>
               {tag && (
                 <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setTag(null)} className="flex items-center gap-1 rounded-full bg-sky-500 px-2.5 py-1 text-xs text-white">
@@ -317,36 +324,36 @@ export default function TodoApp({ user }: { user: PublicUser }) {
 
       <TodoForm open={formOpen} todo={editing} allTags={allTags} onClose={() => setFormOpen(false)} onSubmit={save} />
 
-      <Modal
-        open={!!deleting}
-        onClose={() => setDeleting(null)}
-        title={<>Delete todo?</>}
-        footer={
-          <>
-            <button onClick={() => setDeleting(null)} className="btn bg-emerald-500 hover:bg-emerald-600">Cancel</button>
-            <button onClick={() => deleting && remove(deleting)} className="btn bg-red-500 hover:bg-red-600">Delete</button>
-          </>
-        }
-      >
-        <p className="font-supercell text-lg tracking-wide">Are you sure you want to delete &ldquo;{deleting?.title}&rdquo;?</p>
-        <p className="mt-1 text-sm text-slate-500">You&apos;ll be able to undo this right after.</p>
-      </Modal>
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent
+          title="Delete todo?"
+          footer={
+            <>
+              <AlertDialogCancel asChild><Button variant="secondary">Keep it</Button></AlertDialogCancel>
+              <AlertDialogAction asChild><Button variant="destructive" onClick={() => deleting && remove(deleting)}>Delete</Button></AlertDialogAction>
+            </>
+          }
+        >
+          <p className="font-supercell text-lg tracking-wide">&ldquo;{deleting?.title}&rdquo; will be removed.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">You can undo this right after.</p>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      <Modal
-        open={clearOpen}
-        onClose={() => setClearOpen(false)}
-        title="Clear completed?"
-        footer={
-          <>
-            <button onClick={() => setClearOpen(false)} className="btn bg-emerald-500 hover:bg-emerald-600">Cancel</button>
-            <button onClick={clearCompleted} className="btn bg-red-500 hover:bg-red-600">Clear {completedCount}</button>
-          </>
-        }
-      >
-        <p className="font-supercell text-lg tracking-wide">
-          Remove {completedCount} completed {completedCount === 1 ? "todo" : "todos"}?
-        </p>
-      </Modal>
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogContent
+          title="Clear completed?"
+          footer={
+            <>
+              <AlertDialogCancel asChild><Button variant="secondary">Cancel</Button></AlertDialogCancel>
+              <AlertDialogAction asChild><Button variant="destructive" onClick={clearCompleted}>Clear {completedCount}</Button></AlertDialogAction>
+            </>
+          }
+        >
+          <p className="font-supercell text-lg tracking-wide">
+            Remove {completedCount} completed {completedCount === 1 ? "todo" : "todos"}?
+          </p>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
@@ -360,11 +367,11 @@ function EmptyState({ filtering, onAdd, onReset }: { filtering: boolean; onAdd: 
       </motion.div>
       <h2 className="font-supercell text-2xl tracking-wide">{filtering ? "Nothing matches" : "All clear!"}</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        {filtering ? "Try a different search or filter." : "You have no todos yet. Add your first one to get going."}
+        {filtering ? "Try a different search or filter." : "Nothing on your list. Add something like \u201cBook dentist appointment\u201d to get started."}
       </p>
-      <button onClick={filtering ? onReset : onAdd} className="btn bg-gradient-to-r from-sky-500 to-indigo-500">
-        {filtering ? <><X className="size-4" /> Reset filters</> : <><Sparkles className="size-4" /> Add a todo</>}
-      </button>
+      <Button onClick={filtering ? onReset : onAdd}>
+        {filtering ? <><X /> Reset filters</> : <><Sparkles /> Add your first todo</>}
+      </Button>
     </motion.div>
   );
 }

@@ -8,7 +8,7 @@ A rebuild of the original MERN todo app on **Next.js (App Router) + TypeScript**
 - Priorities, due dates (overdue / today badges), tags, search, filters and sorting
 - Drag-and-drop reordering, undo for delete & clear-completed, progress ring stats
 - Light / dark theme, keyboard shortcuts (`N` new todo, `/` search), toast notifications
-- Framer Motion animations and Lucide icons throughout
+- shadcn/ui-style components on Radix primitives (dialogs, select, tooltip, menu, date picker), Sonner toasts, Framer Motion animations and Lucide icons
 - Secure auth: bcrypt hashes, signed httpOnly JWT cookie, hashed single-use reset tokens
 
 ## Run it
