@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { themeColor: "#b5502f", width: "device-width", initialScale: 1 };
 
-// Runs before paint so the saved theme never flashes.
-const themeScript = `try{var t=localStorage.getItem('theme');if(t!=='light')document.documentElement.classList.add('dark')}catch(e){document.documentElement.classList.add('dark')}`;
+// Runs before first paint so the saved theme never flashes. Modes: "light" | "dark" | "system" (default).
+const themeScript = `(function(){var d=false;try{var t=localStorage.getItem('theme');d=t==='dark'||((t!=='light')&&window.matchMedia('(prefers-color-scheme: dark)').matches)}catch(e){}document.documentElement.classList.toggle('dark',d)})()`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

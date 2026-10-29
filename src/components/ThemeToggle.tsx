@@ -1,39 +1,82 @@
 "use client";
-import { AnimatePresence, motion } from "framer-motion";
-import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, Monitor, Moon, Sun } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "./ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+
+type Theme = "light" | "dark" | "system";
+const KEY = "theme";
+const OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+];
+
+const stored = (): Theme => {
+  try {
+    const t = localStorage.getItem(KEY);
+    return t === "light" || t === "dark" ? t : "system";
+  } catch {
+    return "system";
+  }
+};
+const prefersDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
+const apply = (t: Theme) => document.documentElement.classList.toggle("dark", t === "dark" || (t === "system" && prefersDark()));
 
 export default function ThemeToggle() {
-  const [dark, setDark] = useState(true);
-  useEffect(() => setDark(document.documentElement.classList.contains("dark")), []);
+  const [theme, setTheme] = useState<Theme>("system");
+  const [mounted, setMounted] = useState(false);
 
-  const toggle = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
+  // Read the saved choice after mount (the inline script has already applied it to <html>).
+  useEffect(() => {
+    setTheme(stored());
+    setMounted(true);
+  }, []);
+
+  // Follow OS changes while in "system" mode, and stay in sync with other tabs.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onOs = () => theme === "system" && apply("system");
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== KEY) return;
+      const t = stored();
+      setTheme(t);
+      apply(t);
+    };
+    mq.addEventListener("change", onOs);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      mq.removeEventListener("change", onOs);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [theme]);
+
+  const choose = useCallback((t: Theme) => {
+    setTheme(t);
+    apply(t);
     try {
-      localStorage.setItem("theme", next ? "dark" : "light");
+      if (t === "system") localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, t);
     } catch {}
-  };
+  }, []);
 
+  const Current = OPTIONS.find((o) => o.value === theme)!.icon;
   return (
-    <motion.button
-      whileTap={{ scale: 0.85, rotate: 20 }}
-      onClick={toggle}
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-      className="grid size-10 place-items-center rounded-xl border border-border bg-card/70 text-foreground transition hover:bg-muted"
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={dark ? "moon" : "sun"}
-          initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
-          animate={{ opacity: 1, rotate: 0, scale: 1 }}
-          exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
-          transition={{ duration: 0.2 }}
-        >
-          {dark ? <Moon className="size-5" /> : <Sun className="size-5" />}
-        </motion.span>
-      </AnimatePresence>
-    </motion.button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" aria-label="Theme" title="Theme">
+          {/* before mount we don't know the saved mode, so show a neutral icon to avoid a flash of the wrong one */}
+          {mounted ? <Current className="!size-5" /> : <Monitor className="!size-5" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="min-w-36">
+        {OPTIONS.map(({ value, label, icon: Icon }) => (
+          <DropdownMenuItem key={value} onSelect={() => choose(value)}>
+            <Icon /> {label}
+            {theme === value && <Check className="ml-auto text-primary" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
