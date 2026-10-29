@@ -35,6 +35,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   const router = useRouter();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
+  const phase = useSkeletonPhase(loading);
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("manual");
   const [query, setQuery] = useState("");
@@ -297,14 +298,8 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         </div>
 
         {/* list */}
-        {loading ? (
-          <div className="space-y-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="relative h-[76px] overflow-hidden rounded-2xl bg-muted/60">
-                <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-foreground/[0.05] to-transparent" />
-              </div>
-            ))}
-          </div>
+        {phase === "wait" ? null : phase === "skeleton" ? (
+          <TodoSkeleton />
         ) : visible.length === 0 ? (
           <EmptyState filtering={filtering} onAdd={openAdd} onReset={() => { setFilter("all"); setQuery(""); setTag(null); }} />
         ) : (
@@ -373,6 +368,47 @@ function EmptyState({ filtering, onAdd, onReset }: { filtering: boolean; onAdd: 
       <Button onClick={filtering ? onReset : onAdd}>
         {filtering ? <><X /> Reset filters</> : <><Sparkles /> Add your first todo</>}
       </Button>
+    </motion.div>
+  );
+}
+
+/**
+ * Avoids skeleton flicker: nothing is shown for the first 300ms (fast loads never show it),
+ * and once it appears it stays for at least 700ms so it doesn't flash away.
+ */
+function useSkeletonPhase(loading: boolean): "wait" | "skeleton" | "done" {
+  const [phase, setPhase] = useState<"wait" | "skeleton" | "done">("wait");
+  const shownAt = useRef(0);
+
+  useEffect(() => {
+    if (loading) {
+      const t = setTimeout(() => {
+        shownAt.current = Date.now();
+        setPhase("skeleton");
+      }, 300);
+      return () => clearTimeout(t);
+    }
+    if (shownAt.current === 0) return setPhase("done");
+    const t = setTimeout(() => setPhase("done"), Math.max(0, 700 - (Date.now() - shownAt.current)));
+    return () => clearTimeout(t);
+  }, [loading]);
+
+  return phase;
+}
+
+function TodoSkeleton() {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-3" aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="surface flex animate-soft-pulse items-center gap-3 p-4" style={{ animationDelay: `${i * 0.25}s` }}>
+          <div className="size-7 shrink-0 rounded-full bg-muted" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 rounded bg-muted" style={{ width: `${[58, 44, 66, 50][i]}%` }} />
+            <div className="h-3 w-24 rounded-full bg-muted/70" />
+          </div>
+          <div className="size-9 rounded-xl bg-muted/70" />
+        </div>
+      ))}
     </motion.div>
   );
 }
