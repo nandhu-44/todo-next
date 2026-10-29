@@ -9,34 +9,34 @@
 
 @layer base {
   :root {
-    --background: 36 22% 96%;
-    --foreground: 255 18% 11%;
-    --card: 0 0% 100%;
-    --popover: 0 0% 100%;
-    --muted: 36 14% 91%;
-    --muted-foreground: 255 8% 40%;
-    --border: 36 12% 84%;
-    --primary: 258 72% 54%;
-    --primary-foreground: 0 0% 100%;
-    --destructive: 352 78% 48%;
-    --p-high: 14 88% 52%;
-    --p-medium: 44 88% 46%;
-    --p-low: 205 18% 52%;
+    --background: 40 33% 96%;
+    --foreground: 28 20% 14%;
+    --card: 42 40% 99%;
+    --popover: 42 40% 99%;
+    --muted: 38 22% 90%;
+    --muted-foreground: 28 10% 38%;
+    --border: 36 18% 82%;
+    --primary: 16 62% 44%;
+    --primary-foreground: 40 40% 98%;
+    --destructive: 355 66% 42%;
+    --p-high: 16 62% 48%;
+    --p-medium: 40 68% 46%;
+    --p-low: 150 14% 48%;
   }
   .dark {
-    --background: 255 16% 6%;
-    --foreground: 36 20% 94%;
-    --card: 255 14% 9.5%;
-    --popover: 255 14% 11%;
-    --muted: 255 12% 15%;
-    --muted-foreground: 255 8% 64%;
-    --border: 255 11% 18%;
-    --primary: 258 86% 66%;
-    --primary-foreground: 255 30% 8%;
-    --destructive: 352 82% 62%;
-    --p-high: 14 90% 60%;
-    --p-medium: 44 90% 56%;
-    --p-low: 205 22% 62%;
+    --background: 30 7% 11%;
+    --foreground: 40 25% 91%;
+    --card: 30 7% 14%;
+    --popover: 30 7% 16%;
+    --muted: 30 6% 20%;
+    --muted-foreground: 35 10% 66%;
+    --border: 30 6% 24%;
+    --primary: 16 68% 60%;
+    --primary-foreground: 30 20% 9%;
+    --destructive: 355 72% 64%;
+    --p-high: 16 68% 60%;
+    --p-medium: 40 70% 56%;
+    --p-low: 150 16% 58%;
   }
 
   html { color-scheme: light; }
@@ -50,7 +50,7 @@
 
 @layer components {
   .surface {
-    @apply rounded-2xl border border-border bg-card/80 shadow-sm backdrop-blur-md;
+    @apply rounded-2xl border border-border bg-card shadow-sm;
   }
   .heading { @apply font-supercell tracking-wide; }
 }
