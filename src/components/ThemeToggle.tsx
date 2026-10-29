@@ -12,13 +12,27 @@ const OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "system", label: "System", icon: Monitor },
 ];
 
+const ONE_YEAR = 60 * 60 * 24 * 365;
+
+// The choice is kept in a cookie (readable by the server, survives blocked localStorage) and mirrored to localStorage.
 const stored = (): Theme => {
-  try {
-    const t = localStorage.getItem(KEY);
-    return t === "light" || t === "dark" ? t : "system";
-  } catch {
-    return "system";
+  let t: string | null = document.cookie.match(/(?:^|; )theme=(light|dark)/)?.[1] ?? null;
+  if (!t) {
+    try {
+      t = localStorage.getItem(KEY);
+    } catch {}
   }
+  return t === "light" || t === "dark" ? t : "system";
+};
+const persist = (t: Theme) => {
+  document.cookie =
+    t === "system"
+      ? `${KEY}=; path=/; max-age=0; SameSite=Lax`
+      : `${KEY}=${t}; path=/; max-age=${ONE_YEAR}; SameSite=Lax`;
+  try {
+    if (t === "system") localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, t);
+  } catch {}
 };
 const prefersDark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
 const apply = (t: Theme) => document.documentElement.classList.toggle("dark", t === "dark" || (t === "system" && prefersDark()));
@@ -54,10 +68,7 @@ export default function ThemeToggle() {
   const choose = useCallback((t: Theme) => {
     setTheme(t);
     apply(t);
-    try {
-      if (t === "system") localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY, t);
-    } catch {}
+    persist(t);
   }, []);
 
   const Current = OPTIONS.find((o) => o.value === theme)!.icon;
