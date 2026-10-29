@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ToDo App",
+  title: "ToDo Next",
   description: "A beautiful, fast todo app with priorities, due dates, tags and more.",
   authors: [{ name: "Nandhu Krishnan A" }],
 };

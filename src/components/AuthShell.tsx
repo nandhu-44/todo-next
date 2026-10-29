@@ -23,7 +23,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
         <div className="space-y-1 text-center">
           <div className="mb-3 flex items-center justify-center gap-2">
             <Logo />
-            <span className="heading text-2xl text-primary">ToDo App</span>
+            <span className="heading text-2xl text-primary">ToDo Next</span>
           </div>
           <h1 className="heading text-2xl">{title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}

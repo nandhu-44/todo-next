@@ -1,3 +1,5 @@
+import { requestOrigin } from "./origin";
+
 export const oauthCookie = "todo_oauth";
 
 export const signingKey = () =>
@@ -7,7 +9,7 @@ export const googleEnabled = () => !!(process.env.GOOGLE_CLIENT_ID && process.en
 
 export function googleConfig(req: Request) {
   if (!googleEnabled()) return null;
-  const base = process.env.APP_URL || new URL(req.url).origin;
+  const base = requestOrigin(req);
   return {
     clientId: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,

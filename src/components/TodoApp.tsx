@@ -210,7 +210,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         <div className="flex min-w-0 items-center gap-2">
           <Logo className="size-9" />
           <div className="min-w-0">
-            <h1 className="heading text-2xl text-primary">ToDo App</h1>
+            <h1 className="heading text-2xl text-primary">ToDo Next</h1>
             <p className="truncate text-xs text-muted-foreground">{greeting}, {user.name.split(" ")[0]}</p>
           </div>
         </div>

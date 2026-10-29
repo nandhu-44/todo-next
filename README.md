@@ -1,7 +1,7 @@
-# ToDo App (Next.js)
+# ToDo Next
 
-A rebuild of the original MERN todo app on **Next.js (App Router) + TypeScript**, keeping the original look
-(Lilita One + Poppins, blue / green / amber / red cards) on a new animated aurora background.
+A rebuild of the original MERN todo app on **Next.js (App Router) + TypeScript**, keeping the original
+fonts (Lilita One + Poppins) with a new warm, flat design.
 
 ## What's new vs. the MERN version
 - Next.js route handlers replace the Express server — one deployable app
@@ -24,7 +24,7 @@ Existing users from the MERN app are not migrated (passwords were stored with a 
 
 ## Security & accounts
 - **Google sign-in** (OAuth 2.0 code flow with PKCE + state; ID token verified against Google's keys). Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
-  and add `<APP_URL>/api/auth/google/callback` as an authorised redirect URI. The button only appears when configured.
+  and add `<your-site-url>/api/auth/google/callback` as an authorised redirect URI. The button only appears when configured.
 - **Two-step verification (TOTP)** with QR setup, replay protection and 8 one-time recovery codes. Secrets are AES-256-GCM encrypted at rest.
 - **Account settings** (`/settings`): name, change/set password, 2FA, connected Google account, delete account.
 - Login, 2FA and sensitive account actions are rate-limited (in-memory; use a shared store such as Redis if you run multiple instances).
