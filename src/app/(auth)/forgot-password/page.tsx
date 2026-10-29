@@ -48,7 +48,7 @@ export default function ForgotPassword() {
           <p className="text-center text-sm text-slate-500 dark:text-slate-400">
             Enter your email and we&apos;ll send you a link to choose a new password.
           </p>
-          <Field label="Email" icon={Mail} name="email" type="email" placeholder="you@example.com" required />
+          <Field label="Email" icon={Mail} name="email" type="email" placeholder="john.doe@example.com" required />
           <FormError message={error} />
           <SubmitButton loading={loading}>Send reset link</SubmitButton>
           <p className="text-center text-sm">

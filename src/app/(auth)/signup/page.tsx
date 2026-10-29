@@ -33,10 +33,10 @@ export default function SignUp() {
   return (
     <AuthShell title="Create your account">
       <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Name" icon={User} name="name" placeholder="Your name" autoComplete="name" required maxLength={60} />
-        <Field label="Email" icon={Mail} name="email" type="email" placeholder="you@example.com" autoComplete="email" required />
+        <Field label="Name" icon={User} name="name" placeholder="John Doe" autoComplete="name" required maxLength={60} />
+        <Field label="Email" icon={Mail} name="email" type="email" placeholder="john.doe@example.com" autoComplete="email" required />
         <Field label="Password" icon={Lock} name="password" type="password" placeholder="At least 8 characters" autoComplete="new-password" minLength={8} required />
-        <Field label="Confirm password" icon={Lock} name="confirm" type="password" placeholder="Repeat password" autoComplete="new-password" minLength={8} required />
+        <Field label="Confirm password" icon={Lock} name="confirm" type="password" placeholder="Re-enter your password" autoComplete="new-password" minLength={8} required />
         <FormError message={error} />
         <SubmitButton loading={loading}>Sign up</SubmitButton>
         <p className="text-center text-sm text-slate-500 dark:text-slate-400">

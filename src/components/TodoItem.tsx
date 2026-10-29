@@ -1,9 +1,12 @@
 "use client";
 import { AnimatePresence, Reorder, motion, useDragControls } from "framer-motion";
-import { AlarmClock, Check, ChevronDown, GripVertical, Pencil, Trash2 } from "lucide-react";
+import { AlarmClock, ChevronDown, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { dueLabel, fullDate } from "@/lib/dates";
 import type { Todo } from "@/lib/types";
+import { Button } from "./ui/button";
+import { RoundCheckbox } from "./ui/checkbox";
+import { Tip } from "./ui/tooltip";
 
 const PRIORITY_DOT = { low: "bg-emerald-300", medium: "bg-amber-300", high: "bg-rose-300" };
 const DUE_TONE = {
@@ -63,27 +66,14 @@ export default function TodoItem({ todo, canDrag, onDragEnd, onToggle, onEdit, o
 
         {/* completion checkbox with burst */}
         <div className="relative">
-          <motion.button
-            whileTap={{ scale: 0.8 }}
-            onClick={() => {
-              if (!todo.completed) setBurst((b) => b + 1);
+          <RoundCheckbox
+            checked={todo.completed}
+            label={`Mark "${todo.title}" as ${todo.completed ? "not done" : "done"}`}
+            onCheckedChange={(c) => {
+              if (c) setBurst((b) => b + 1);
               onToggle();
             }}
-            role="checkbox"
-            aria-checked={todo.completed}
-            aria-label={todo.completed ? "Mark as not done" : "Mark as done"}
-            className={`grid size-7 place-items-center rounded-full border-2 transition-colors ${
-              todo.completed ? "border-white bg-white text-green-600" : "border-white/70 hover:bg-white/20"
-            }`}
-          >
-            <AnimatePresence>
-              {todo.completed && (
-                <motion.span initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 500, damping: 20 }}>
-                  <Check className="size-4" strokeWidth={3.5} />
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+          />
           {burst > 0 && <Burst key={burst} />}
         </div>
 
@@ -125,12 +115,16 @@ export default function TodoItem({ todo, canDrag, onDragEnd, onToggle, onEdit, o
         </div>
 
         <div className="flex items-center gap-1.5">
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.88 }} onClick={onEdit} aria-label="Edit todo" className="rounded-xl bg-amber-500 p-2 shadow hover:bg-amber-400">
-            <Pencil className="size-4 sm:size-5" />
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.88 }} onClick={onDelete} aria-label="Delete todo" className="rounded-xl bg-red-500 p-2 shadow hover:bg-red-400">
-            <Trash2 className="size-4 sm:size-5" />
-          </motion.button>
+          <Tip label="Edit">
+            <Button variant="warning" size="icon-sm" onClick={onEdit} aria-label={`Edit "${todo.title}"`} className="shadow">
+              <Pencil className="!size-4" />
+            </Button>
+          </Tip>
+          <Tip label="Delete">
+            <Button variant="destructive" size="icon-sm" onClick={onDelete} aria-label={`Delete "${todo.title}"`} className="shadow">
+              <Trash2 className="!size-4" />
+            </Button>
+          </Tip>
         </div>
       </div>
 

@@ -3,6 +3,9 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Loader2, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import ThemeToggle from "./ThemeToggle";
 
 export function AuthShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -38,11 +41,11 @@ export function Field({ label, icon: Icon, type, ...rest }: FieldProps) {
   const [show, setShow] = useState(false);
   const isPw = type === "password";
   return (
-    <label className="block">
-      <span className="mb-1.5 block font-supercell text-sm tracking-wide text-slate-600 dark:text-slate-300">{label}</span>
-      <span className="relative block">
+    <div className="space-y-1.5">
+      <Label htmlFor={rest.name}>{label}</Label>
+      <div className="relative">
         <Icon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-        <input {...rest} type={isPw && show ? "text" : type} className="field pl-10 pr-10" />
+        <Input {...rest} id={rest.name} type={isPw && show ? "text" : type} className="pl-10 pr-10" />
         {isPw && (
           <button
             type="button"
@@ -53,23 +56,17 @@ export function Field({ label, icon: Icon, type, ...rest }: FieldProps) {
             {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
         )}
-      </span>
-    </label>
+      </div>
+    </div>
   );
 }
 
 export function SubmitButton({ loading, children }: { loading: boolean; children: React.ReactNode }) {
   return (
-    <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      disabled={loading}
-      type="submit"
-      className="btn w-full bg-gradient-to-r from-sky-500 to-indigo-500 py-3 shadow-lg shadow-sky-500/25 hover:from-sky-400 hover:to-indigo-400"
-    >
-      {loading && <Loader2 className="size-4 animate-spin" />}
+    <Button type="submit" size="lg" disabled={loading} className="w-full">
+      {loading && <Loader2 className="animate-spin" />}
       {children}
-    </motion.button>
+    </Button>
   );
 }
 

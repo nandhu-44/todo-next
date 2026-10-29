@@ -4,13 +4,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, ShieldAlert } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { AuthShell, Field, FormError, SubmitButton } from "@/components/AuthShell";
-import { useToast } from "@/components/Toasts";
 import { api } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 function ResetForm() {
   const token = useSearchParams().get("token") ?? "";
   const router = useRouter();
-  const toast = useToast();
   const [valid, setValid] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +28,7 @@ function ResetForm() {
     setError("");
     try {
       await api("/api/auth/reset", { method: "POST", body: { token, password: f.get("password") } });
-      toast({ title: "Password updated — please sign in" });
+      notify.success("Password updated. Please sign in.");
       router.replace("/signin");
     } catch (err) {
       setError((err as Error).message);
