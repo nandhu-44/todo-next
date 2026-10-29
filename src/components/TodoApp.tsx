@@ -301,7 +301,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
               <div key={i} className="relative h-[76px] overflow-hidden rounded-2xl bg-muted/60">
-                <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+                <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-foreground/[0.05] to-transparent" />
               </div>
             ))}
           </div>
