@@ -140,7 +140,11 @@ export default function TodoForm({ open, todo, allTags, onClose, onSubmit }: Pro
               ))}
               <input
                 value={tagInput}
-                onChange={(e) => (e.target.value.endsWith(",") ? addTag(e.target.value.slice(0, -1)) : setTagInput(e.target.value))}
+                onChange={(e) => {
+                  const v = e.target.value.toLowerCase(); // tags are always lowercase
+                  if (v.endsWith(",")) addTag(v.slice(0, -1));
+                  else setTagInput(v);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();

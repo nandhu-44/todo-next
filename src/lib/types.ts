@@ -10,6 +10,8 @@ export interface Todo {
   tags: string[];
   order: number;
   createdAt: string;
+  /** last content edit (not reordering); used to settle sync conflicts */
+  updatedAt: string;
   completedAt: string | null;
 }
 

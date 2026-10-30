@@ -49,4 +49,7 @@ export function parseTodo(body: unknown, requireTitle: boolean): TodoPatch | str
   return out;
 }
 
-export const toTodo = ({ userId: _userId, ...todo }: import("./db").TodoDoc): import("./types").Todo => todo;
+export const toTodo = ({ userId: _userId, ...todo }: import("./db").TodoDoc): import("./types").Todo => ({
+  ...todo,
+  updatedAt: todo.updatedAt ?? todo.createdAt, // todos created before updatedAt existed
+});
