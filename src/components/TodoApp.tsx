@@ -1,6 +1,6 @@
 "use client";
 import { AnimatePresence, Reorder, motion } from "framer-motion";
-import { ArrowDownUp, Check, ChevronDown, ClipboardList, Eraser, HardDrive, LogOut, Plus, RefreshCw, Search, SearchX, Settings, Sparkles, Tags, X } from "lucide-react";
+import { ArrowDownUp, CalendarDays, Check, ChevronDown, ClipboardList, Eraser, HardDrive, LogOut, Plus, RefreshCw, Search, SearchX, Settings, Sparkles, Tags, X } from "lucide-react";
 import { Popover } from "radix-ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +11,7 @@ import { notify } from "@/lib/notify";
 import { countPending } from "@/lib/sync";
 import type { PublicUser, Todo } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import CalendarView from "./CalendarView";
 import Logo from "./Logo";
 import Stats from "./Stats";
 import ThemeToggle from "./ThemeToggle";
@@ -27,6 +28,7 @@ type Filter = "all" | "active" | "done";
 type Sort = "manual" | "newest" | "due" | "priority" | "title";
 /** cloud = every change goes straight to the server; local = changes stay in this browser until "Sync" */
 type Mode = "unknown" | "cloud" | "local";
+type View = "list" | "calendar";
 const PRIO_RANK = { high: 0, medium: 1, low: 2 };
 
 const SORTS: { id: Sort; label: string }[] = [
@@ -51,6 +53,11 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   const [sort, setSort] = useState<Sort>("manual");
   const [query, setQuery] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [view, setView] = useState<View>("list");
+  const [newDueDate, setNewDueDate] = useState<string | undefined>();
+  // while a drag is in progress this holds the list as the user is arranging it
+  const [dragList, setDragList] = useState<Todo[] | null>(null);
+  const dragRef = useRef<Todo[] | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Todo | null>(null);
   const [deleting, setDeleting] = useState<Todo | null>(null);
@@ -113,6 +120,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
       const saved = JSON.parse(localStorage.getItem(prefsKey) ?? "null");
       if (SORTS.some((o) => o.id === saved?.sort)) setSort(saved.sort);
       if (["all", "active", "done"].includes(saved?.filter)) setFilter(saved.filter);
+      if (saved?.view === "list" || saved?.view === "calendar") setView(saved.view);
       if (Array.isArray(saved?.tags)) setTags(saved.tags.filter((t: unknown) => typeof t === "string"));
       else if (typeof saved?.tag === "string") setTags([saved.tag]); // older single-tag format
     } catch {}
@@ -121,12 +129,12 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   useEffect(() => {
     if (!prefsLoaded.current) return; // don't overwrite saved values with defaults before they're read
     try {
-      localStorage.setItem(prefsKey, JSON.stringify({ sort, filter, tags }));
+      localStorage.setItem(prefsKey, JSON.stringify({ sort, filter, tags, view }));
     } catch {}
-  }, [prefsKey, sort, filter, tags]);
+  }, [prefsKey, sort, filter, tags, view]);
 
-  const openAdd = () => { setEditing(null); setFormOpen(true); };
-  const openEdit = (t: Todo) => { setEditing(t); setFormOpen(true); };
+  const openAdd = (dueDate?: string) => { setEditing(null); setNewDueDate(dueDate); setFormOpen(true); };
+  const openEdit = (t: Todo) => { setEditing(t); setNewDueDate(undefined); setFormOpen(true); };
   const toggleTag = (t: string) => setTags((l) => (l.includes(t) ? l.filter((x) => x !== t) : [...l, t]));
 
   /* ---------------- mutations ----------------
@@ -229,13 +237,30 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     }
   }
 
+  // Dragging works in every view. The arrangement is only applied when the drop happens:
+  // the dragged items take over their own slots in the manual order, and a sorted view switches to manual order.
   function reorder(next: Todo[]) {
-    setTodos(next);
+    dragRef.current = next;
+    setDragList(next);
   }
-  async function persistOrder() {
-    if (local) return setTodos((l) => l.map((t, i) => ({ ...t, order: i }))); // order values must match the list order for merging
+  async function commitOrder() {
+    const arranged = dragRef.current;
+    dragRef.current = null;
+    setDragList(null);
+    if (!arranged || arranged.every((t, i) => t.id === visible[i]?.id)) return; // dropped where it started
+    const moving = new Set(arranged.map((t) => t.id));
+    const slots = todos.flatMap((t, i) => (moving.has(t.id) ? [i] : []));
+    const next = [...todos];
+    slots.forEach((slot, i) => (next[slot] = arranged[i]));
+    const numbered = next.map((t, i) => ({ ...t, order: i })); // order values must match list order (needed for merging too)
+    setTodos(numbered);
+    if (sort !== "manual") {
+      setSort("manual");
+      notify.success("Switched to manual order");
+    }
+    if (local) return;
     try {
-      await api("/api/todos/reorder", { method: "POST", body: { ids: todos.map((t) => t.id) } });
+      await api("/api/todos/reorder", { method: "POST", body: { ids: numbered.map((t) => t.id) } });
     } catch (e) {
       notify.error((e as Error).message);
       reload();
@@ -282,7 +307,6 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   }, [loading, tags, allTags]);
 
   const filtering = filter !== "all" || !!query.trim() || tags.length > 0;
-  const canDrag = sort === "manual" && !filtering;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -304,6 +328,9 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     }
     return list;
   }, [todos, filter, tags, query, sort]);
+
+  const shown = dragList ?? visible; // what the list displays (mid-drag it is the arrangement in progress)
+  const canDrag = view === "list" && visible.length > 1;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -367,13 +394,22 @@ export default function TodoApp({ user }: { user: PublicUser }) {
 
         {/* actions */}
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-          <Button size="lg" onClick={openAdd}>
+          <Button size="lg" onClick={() => openAdd()}>
             <Plus /> Add todo
             <kbd className="ml-1 hidden rounded bg-primary-foreground/20 px-1.5 text-xs sm:inline">N</kbd>
           </Button>
           <Button size="lg" onClick={() => (completedCount ? setClearOpen(true) : notify.warning("No completed todos to clear"))}>
             <Eraser /> Clear completed
           </Button>
+        </div>
+
+        <div className="flex justify-center">
+          <SegmentedControl
+            label="View"
+            value={view}
+            onChange={setView}
+            options={[{ value: "list", label: "List" }, { value: "calendar", label: "Calendar" }]}
+          />
         </div>
 
         {/* search / filter / sort */}
@@ -388,6 +424,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
                 </button>
               )}
             </div>
+            {view === "list" && (
             <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
               <SelectTrigger aria-label="Sort todos" className="w-40 sm:w-44">
                 <span className="flex items-center gap-2"><ArrowDownUp className="size-4 text-muted-foreground" /><SelectValue /></span>
@@ -396,6 +433,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
                 {SORTS.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -426,25 +464,29 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         {/* list */}
         {phase === "wait" ? null : phase === "skeleton" ? (
           <TodoSkeleton />
+        ) : view === "calendar" ? (
+          <CalendarView todos={visible} onToggle={toggle} onEdit={openEdit} onAdd={(d) => openAdd(d)} />
         ) : visible.length === 0 ? (
-          <EmptyState filtering={filtering} onAdd={openAdd} onReset={resetFilters} />
+          <EmptyState filtering={filtering} onAdd={() => openAdd()} onReset={resetFilters} />
         ) : (
           <div className={cn(syncing && "pointer-events-none opacity-60 transition-opacity")}>
-            <Reorder.Group ref={listRef} as="ul" axis="y" values={visible} onReorder={reorder} className="space-y-3">
+            <Reorder.Group ref={listRef} as="ul" axis="y" values={shown} onReorder={reorder} className="space-y-3">
               <AnimatePresence initial={false}>
-                {visible.map((t) => (
-                  <TodoItem key={t.id} todo={t} canDrag={canDrag} constraintsRef={listRef} onDragEnd={persistOrder} onToggle={() => toggle(t)} onEdit={() => openEdit(t)} onDelete={() => setDeleting(t)} onTag={toggleTag} />
+                {shown.map((t) => (
+                  <TodoItem key={t.id} todo={t} canDrag={canDrag} constraintsRef={listRef} onDragEnd={commitOrder} onToggle={() => toggle(t)} onEdit={() => openEdit(t)} onDelete={() => setDeleting(t)} onTag={toggleTag} />
                 ))}
               </AnimatePresence>
             </Reorder.Group>
-            {canDrag && visible.length > 1 && (
-              <p className="pt-3 text-center text-xs text-muted-foreground">Drag the handle to reorder</p>
+            {canDrag && (
+              <p className="pt-3 text-center text-xs text-muted-foreground">
+                Drag the handle to reorder{sort !== "manual" ? " (switches to manual order)" : ""}
+              </p>
             )}
           </div>
         )}
       </motion.div>
 
-      <TodoForm open={formOpen} todo={editing} allTags={allTags} onClose={() => setFormOpen(false)} onSubmit={save} />
+      <TodoForm open={formOpen} todo={editing} allTags={allTags} defaultDueDate={newDueDate} onClose={() => setFormOpen(false)} onSubmit={save} />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent
