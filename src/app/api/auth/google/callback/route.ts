@@ -2,8 +2,9 @@ import { randomUUID } from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { clearPending, createPending, createSession } from "@/lib/auth";
-import { getDb, type UserDoc } from "@/lib/db";
+import { clearPending, createPending, createSession, getUser } from "@/lib/auth";
+import { DuplicateError, getDb, type UserDoc } from "@/lib/db";
+import { normalizeEmail } from "@/lib/email";
 import { googleConfig, oauthCookie, signingKey } from "@/lib/google";
 
 const jwks = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
@@ -45,19 +46,34 @@ export async function GET(req: Request) {
       issuer: ["https://accounts.google.com", "accounts.google.com"],
       audience: cfg.clientId,
     });
-    const email = String(g.email ?? "").toLowerCase();
+    const email = normalizeEmail(String(g.email ?? ""));
     if (!g.sub || !email || g.email_verified !== true) return to("/signin?error=google_unverified");
 
     const db = await getDb();
+
+    // Linking from settings: attach this Google identity to the signed-in account (emails must match).
+    if (ctx.linkUserId) {
+      const me = await getUser();
+      if (!me || me.id !== ctx.linkUserId) return to("/signin");
+      const owner = await db.users.findOne({ googleId: g.sub } as Partial<UserDoc>);
+      if (owner && owner.id !== me.id) return to("/settings?error=google_taken");
+      if (email !== me.email) return to("/settings?error=google_email_mismatch");
+      if (me.googleId && me.googleId !== g.sub) return to("/settings?error=google_conflict");
+      await db.users.update(me.id, { googleId: g.sub });
+      return to("/settings?linked=1");
+    }
+
+    // Email is the account key: find by Google id first, then by email, and only then create.
     let user = await db.users.findOne({ googleId: g.sub } as Partial<UserDoc>);
     if (!user) {
       const existing = await db.users.findOne({ email });
       if (existing) {
-        // Google verified this address, so it's safe to link to the existing account.
+        if (existing.googleId && existing.googleId !== g.sub) return to("/signin?error=google_conflict");
+        // Google verified this address, so it's safe to attach to the existing (password) account.
         await db.users.update(existing.id, { googleId: g.sub });
         user = { ...existing, googleId: g.sub };
       } else {
-        user = {
+        const fresh: UserDoc = {
           id: randomUUID(),
           name: String(g.name || email.split("@")[0]).slice(0, 60),
           email,
@@ -65,7 +81,15 @@ export async function GET(req: Request) {
           googleId: g.sub,
           createdAt: new Date().toISOString(),
         };
-        await db.users.insert(user);
+        try {
+          await db.users.insert(fresh);
+          user = fresh;
+        } catch (e) {
+          if (!(e instanceof DuplicateError)) throw e;
+          // a concurrent request created it first
+          user = await db.users.findOne({ email });
+          if (!user) throw e;
+        }
       }
     }
 

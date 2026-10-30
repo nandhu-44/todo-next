@@ -86,11 +86,11 @@ export function FormError({ message }: { message: string }) {
   );
 }
 
-export function GoogleButton({ remember = true, label = "Continue with Google" }: { remember?: boolean; label?: string }) {
+export function GoogleButton({ remember = true, link = false, label = "Continue with Google" }: { remember?: boolean; link?: boolean; label?: string }) {
   return (
     <Button asChild variant="outline" size="lg" className="w-full">
       {/* a full-page navigation: the OAuth flow redirects through Google */}
-      <a href={`/api/auth/google${remember ? "" : "?remember=0"}`}>
+      <a href={link ? "/api/auth/google?link=1" : `/api/auth/google${remember ? "" : "?remember=0"}`}>
         <svg viewBox="0 0 24 24" className="!size-5" aria-hidden>
           <path fill="#4285F4" d="M22.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.3h5.9a5.04 5.04 0 0 1-2.19 3.31v2.75h3.54c2.07-1.9 3.25-4.7 3.25-8.09Z" />
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.54-2.75c-.98.66-2.24 1.05-3.74 1.05-2.87 0-5.3-1.94-6.17-4.55H2.18v2.84A11 11 0 0 0 12 23Z" />
@@ -116,4 +116,7 @@ export const AUTH_ERRORS: Record<string, string> = {
   google_denied: "Google sign-in was cancelled.",
   google_failed: "Google sign-in didn't work. Please try again.",
   google_unverified: "Your Google email isn't verified, so we can't sign you in with it.",
+  google_conflict: "This email is already linked to a different Google account.",
+  google_taken: "That Google account is already linked to another ToDo Next account.",
+  google_email_mismatch: "That Google account uses a different email than this account. Sign in with the Google account that has your email.",
 };

@@ -4,11 +4,11 @@ import { ArrowLeft, Check, Copy, Download, KeyRound, Loader2, Lock, ShieldCheck,
 import Logo from "./Logo";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import type { PublicUser } from "@/lib/types";
-import { GoogleButton } from "./AuthShell";
+import { AUTH_ERRORS, GoogleButton } from "./AuthShell";
 import { OtpInput } from "./OtpInput";
 import ThemeToggle from "./ThemeToggle";
 import { Button } from "./ui/button";
@@ -33,9 +33,16 @@ function Section({ icon: Icon, title, description, children, danger }: { icon: t
   );
 }
 
-export default function SettingsView({ initial, googleEnabled }: { initial: PublicUser; googleEnabled: boolean }) {
+export default function SettingsView({ initial, googleEnabled, error, linked }: { initial: PublicUser; googleEnabled: boolean; error?: string; linked?: boolean }) {
   const router = useRouter();
   const [user, setUser] = useState(initial);
+
+  // Result of a "Connect Google" round-trip arrives as a query string; show it once, then tidy the URL.
+  useEffect(() => {
+    if (linked) notify.success("Google account connected");
+    else if (error && AUTH_ERRORS[error]) notify.error(AUTH_ERRORS[error]);
+    if (linked || error) window.history.replaceState(null, "", "/settings");
+  }, [linked, error]);
 
   return (
     <main className="mx-auto max-w-2xl px-3 pb-24 pt-5 sm:px-6">
@@ -57,18 +64,7 @@ export default function SettingsView({ initial, googleEnabled }: { initial: Publ
         <ProfileSection user={user} onChange={setUser} />
         <PasswordSection user={user} onChange={setUser} />
         <TwoFactorSection user={user} onChange={setUser} />
-        <Section icon={KeyRound} title="Connected accounts" description="Sign in with one click using Google.">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm">
-              Google: <span className="font-medium">{user.google ? "Connected" : "Not connected"}</span>
-            </p>
-            {!user.google && googleEnabled && <div className="w-56"><GoogleButton label="Connect Google" /></div>}
-            {!user.google && !googleEnabled && <p className="text-xs text-muted-foreground">Not configured on this server</p>}
-          </div>
-          {!user.google && googleEnabled && (
-            <p className="mt-2 text-xs text-muted-foreground">Use the Google account that has the same email as this one to link them.</p>
-          )}
-        </Section>
+        <GoogleSection user={user} googleEnabled={googleEnabled} onChange={setUser} />
         <DeleteSection user={user} onDeleted={() => { router.replace("/signup"); router.refresh(); }} />
       </div>
     </main>
@@ -419,6 +415,59 @@ function DeleteSection({ user, onDeleted }: { user: PublicUser; onDeleted: () =>
           </div>
         </AlertDialogContent>
       </AlertDialog>
+    </Section>
+  );
+}
+
+/* ------------------------------- google ------------------------------- */
+function GoogleSection({ user, googleEnabled, onChange }: { user: PublicUser; googleEnabled: boolean; onChange: (u: PublicUser) => void }) {
+  const [busy, setBusy] = useState(false);
+
+  async function unlink() {
+    setBusy(true);
+    try {
+      const r = await api<{ user: PublicUser }>("/api/account/google/unlink", { method: "POST" });
+      onChange(r.user);
+      notify.success("Google disconnected");
+    } catch (err) {
+      notify.error((err as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <Section
+      icon={KeyRound}
+      title="Sign-in methods"
+      description={`Your email (${user.email}) identifies your account. Use either method to sign in to the same account.`}
+    >
+      <ul className="divide-y divide-border text-sm">
+        <li className="flex items-center justify-between gap-3 py-2.5">
+          <span>Email &amp; password</span>
+          <span className={user.hasPassword ? "font-medium text-primary" : "text-muted-foreground"}>{user.hasPassword ? "Set up" : "Not set up — add one above"}</span>
+        </li>
+        <li className="flex items-center justify-between gap-3 py-2.5">
+          <span>Google</span>
+          {user.google ? (
+            <span className="flex items-center gap-3">
+              <span className="font-medium text-primary">Connected</span>
+              <Button variant="outline" size="icon-sm" className="w-auto px-3 text-sm" disabled={busy || !user.hasPassword} onClick={unlink} title={user.hasPassword ? undefined : "Set a password first"}>
+                Disconnect
+              </Button>
+            </span>
+          ) : googleEnabled ? (
+            <div className="w-52"><GoogleButton link label="Connect Google" /></div>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not configured on this server</span>
+          )}
+        </li>
+      </ul>
+      {user.google && !user.hasPassword && (
+        <p className="mt-2 text-xs text-muted-foreground">Add a password above to be able to disconnect Google.</p>
+      )}
+      {!user.google && googleEnabled && (
+        <p className="mt-2 text-xs text-muted-foreground">Connecting requires the Google account that uses this same email address.</p>
+      )}
     </Section>
   );
 }

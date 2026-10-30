@@ -28,6 +28,13 @@ export interface ResetDoc {
   expiresAt: number;
 }
 
+/** Thrown when an insert/update would break a unique field (e.g. a second account with the same email). */
+export class DuplicateError extends Error {
+  constructor(public field: string) {
+    super(`Duplicate ${field}`);
+  }
+}
+
 export interface Collection<T extends { id: string }> {
   find(q: Partial<T>): Promise<T[]>;
   findOne(q: Partial<T>): Promise<T | null>;
@@ -73,17 +80,32 @@ function withLock<R>(fn: (data: Shape) => Promise<R> | R, write: boolean): Promi
   return run;
 }
 
-function fileCollection<K extends keyof Shape>(name: K): Collection<Shape[K][number]> {
+function fileCollection<K extends keyof Shape>(name: K, unique: string[] = []): Collection<Shape[K][number]> {
   type T = Shape[K][number];
   const arr = (d: Shape) => d[name] as unknown as T[];
+  // Unset values (null/undefined) never collide, like a partial unique index.
+  const checkUnique = (d: Shape, doc: T, ignoreId?: string) => {
+    for (const f of unique) {
+      const v = (doc as unknown as Record<string, unknown>)[f];
+      if (v == null) continue;
+      if (arr(d).some((x) => x.id !== ignoreId && (x as unknown as Record<string, unknown>)[f] === v)) throw new DuplicateError(f);
+    }
+  };
   return {
     find: (q) => withLock((d) => arr(d).filter((x) => matches(x, q)), false),
     findOne: (q) => withLock((d) => arr(d).find((x) => matches(x, q)) ?? null, false),
-    insert: (doc) => withLock((d) => void arr(d).push(doc), true),
+    insert: (doc) =>
+      withLock((d) => {
+        checkUnique(d, doc);
+        arr(d).push(doc);
+      }, true),
     update: (id, patch) =>
       withLock((d) => {
         const i = arr(d).findIndex((x) => x.id === id);
-        if (i >= 0) arr(d)[i] = { ...arr(d)[i], ...patch };
+        if (i < 0) return;
+        const next = { ...arr(d)[i], ...patch };
+        checkUnique(d, next, id);
+        arr(d)[i] = next;
       }, true),
     remove: (q) =>
       withLock((d) => {
@@ -95,6 +117,10 @@ function fileCollection<K extends keyof Shape>(name: K): Collection<Shape[K][num
 }
 
 /* ---------- MongoDB store ---------- */
+function asDuplicate(e: unknown) {
+  const err = e as { code?: number; keyPattern?: Record<string, unknown> };
+  return err?.code === 11000 ? new DuplicateError(Object.keys(err.keyPattern ?? { email: 1 })[0]) : e;
+}
 async function mongoDb(): Promise<DB> {
   const { MongoClient } = await import("mongodb");
   const client = await new MongoClient(process.env.MONGO_URI!).connect();
@@ -106,8 +132,20 @@ async function mongoDb(): Promise<DB> {
     return {
       find: async (q) => (await c.find(q as object).toArray()).map(strip) as T[],
       findOne: async (q) => strip(await c.findOne(q as object)) as T | null,
-      insert: async (doc) => void (await c.insertOne({ ...doc })),
-      update: async (id, patch) => void (await c.updateOne({ id }, { $set: patch as object })),
+      insert: async (doc) => {
+        try {
+          await c.insertOne({ ...doc });
+        } catch (e) {
+          throw asDuplicate(e);
+        }
+      },
+      update: async (id, patch) => {
+        try {
+          await c.updateOne({ id }, { $set: patch as object });
+        } catch (e) {
+          throw asDuplicate(e);
+        }
+      },
       remove: async (q) => (await c.deleteMany(q as object)).deletedCount,
     };
   };
@@ -116,6 +154,7 @@ async function mongoDb(): Promise<DB> {
   await Promise.all([
     db.collection("users").createIndex({ email: 1 }, { unique: true }),
     db.collection("users").createIndex({ id: 1 }, { unique: true }),
+    db.collection("users").createIndex({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: { $type: "string" } } }),
     db.collection("todos").createIndex({ userId: 1 }),
     db.collection("todos").createIndex({ id: 1 }),
   ]);
@@ -128,7 +167,7 @@ export function getDb(): Promise<DB> {
     g.__db = process.env.MONGO_URI
       ? mongoDb()
       : Promise.resolve({
-          users: fileCollection("users"),
+          users: fileCollection("users", ["email", "googleId"]),
           todos: fileCollection("todos"),
           resets: fileCollection("resets"),
         } as DB);
