@@ -35,3 +35,9 @@ Existing users from the MERN app are not migrated (passwords were stored with a 
 - Google and email + password sign-in reach the **same account**. Sign in with Google, then add a password under *Settings → Password*
   (or use "Forgot password"), and you can use either. *Settings → Sign-in methods* shows what is connected; Google can be disconnected once a password exists.
 - List preferences (sort order, status filter, tag filter) are remembered per user in the browser.
+
+## Local-only mode
+*Settings → Local-only mode* keeps your todos in this browser; nothing is uploaded until you press **Sync**. Turning it off syncs first.
+Because each device then holds its own copy, the server does a three-way merge on sync (`src/lib/sync.ts`) using the snapshot from the last sync:
+edits to different todos combine, the newest edit wins when the same todo changed on both sides, a delete never discards a newer edit, and a manual
+reorder on the syncing device is kept. Run `npm test` for the merge scenarios. (Conflict resolution compares device timestamps, so badly wrong device clocks can pick the wrong "newest".)

@@ -23,8 +23,10 @@ export async function POST(req: Request) {
   // Restoring a deleted todo (undo) keeps its original id/order/createdAt.
   const restore = body?.restore;
   const id = typeof restore?.id === "string" && /^[\w-]{8,64}$/.test(restore.id) ? restore.id : randomUUID();
-  if (mine.some((t) => t.id === id)) return fail("Todo already exists", 409);
+  // ids are global (updates look todos up by id), so refuse one that exists under any account
+  if (await db.todos.findOne({ id })) return fail("Todo already exists", 409);
 
+  const now = new Date().toISOString();
   const todo: TodoDoc = {
     id,
     userId: a.user.id,
@@ -38,7 +40,8 @@ export async function POST(req: Request) {
     createdAt:
       typeof restore?.createdAt === "string" && !isNaN(Date.parse(restore.createdAt))
         ? restore.createdAt
-        : new Date().toISOString(),
+        : now,
+    updatedAt: now,
     completedAt: input.completed ? new Date().toISOString() : null,
   };
   await db.todos.insert(todo);

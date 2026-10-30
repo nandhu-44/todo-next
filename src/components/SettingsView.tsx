@@ -1,12 +1,14 @@
 "use client";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Copy, Download, KeyRound, Loader2, Lock, ShieldCheck, ShieldOff, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Copy, Download, HardDrive, KeyRound, Loader2, Lock, RefreshCw, ShieldCheck, ShieldOff, Trash2, User } from "lucide-react";
 import Logo from "./Logo";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { clearLocal, enableLocalMode, readLocal, syncNow, syncSummary, timeAgo, type LocalState } from "@/lib/localStore";
 import { notify } from "@/lib/notify";
+import { countPending } from "@/lib/sync";
 import type { PublicUser } from "@/lib/types";
 import { AUTH_ERRORS, GoogleButton } from "./AuthShell";
 import { OtpInput } from "./OtpInput";
@@ -15,6 +17,7 @@ import { Button } from "./ui/button";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, Dialog, DialogContent } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Switch } from "./ui/switch";
 
 function Section({ icon: Icon, title, description, children, danger }: { icon: typeof User; title: string; description?: string; children: React.ReactNode; danger?: boolean }) {
   return (
@@ -65,7 +68,8 @@ export default function SettingsView({ initial, googleEnabled, error, linked }: 
         <PasswordSection user={user} onChange={setUser} />
         <TwoFactorSection user={user} onChange={setUser} />
         <GoogleSection user={user} googleEnabled={googleEnabled} onChange={setUser} />
-        <DeleteSection user={user} onDeleted={() => { router.replace("/signup"); router.refresh(); }} />
+        <StorageSection userId={user.id} />
+        <DeleteSection user={user} onDeleted={() => { clearLocal(user.id); router.replace("/signup"); router.refresh(); }} />
       </div>
     </main>
   );
@@ -179,7 +183,7 @@ function TwoFactorSection({ user, onChange }: { user: PublicUser; onChange: (u: 
     <Section
       icon={user.totpEnabled ? ShieldCheck : ShieldOff}
       title="Two-step verification"
-      description="Require a code from an authenticator app (Google Authenticator, 1Password, Authy…) when you sign in."
+      description="Require a code from an authenticator app (Google Authenticator, 1Password, Authy) when you sign in."
     >
       {user.totpEnabled ? (
         <div className="space-y-3">
@@ -468,6 +472,106 @@ function GoogleSection({ user, googleEnabled, onChange }: { user: PublicUser; go
       {!user.google && googleEnabled && (
         <p className="mt-2 text-xs text-muted-foreground">Connecting requires the Google account that uses this same email address.</p>
       )}
+    </Section>
+  );
+}
+
+/* ------------------------------- local-only mode ------------------------------- */
+function StorageSection({ userId }: { userId: string }) {
+  const [state, setState] = useState<LocalState | null>(null); // non-null = local-only mode is on
+  const [ready, setReady] = useState(false);
+  const [confirmOn, setConfirmOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setState(readLocal(userId));
+    setReady(true);
+  }, [userId]);
+
+  const pending = state ? countPending(state.base, state.todos) : 0;
+
+  async function turnOn() {
+    setBusy(true);
+    try {
+      setState(await enableLocalMode(userId));
+      setConfirmOn(false);
+      notify.success("Local-only mode is on");
+    } catch (err) {
+      notify.error((err as Error).message);
+    }
+    setBusy(false);
+  }
+
+  async function sync(): Promise<boolean> {
+    if (!state) return true;
+    setBusy(true);
+    try {
+      const r = await syncNow(userId, state);
+      setState(r.state);
+      notify.success(syncSummary(r.stats));
+      setBusy(false);
+      return true;
+    } catch (err) {
+      notify.error(`Sync failed: ${(err as Error).message}`);
+      setBusy(false);
+      return false;
+    }
+  }
+
+  // Turning the mode off first syncs, so nothing made while offline is lost.
+  async function turnOff() {
+    if (pending > 0 && !(await sync())) return;
+    clearLocal(userId);
+    setState(null);
+    notify.success("Local-only mode is off. Changes now save to your account.");
+  }
+
+  return (
+    <Section icon={HardDrive} title="Local-only mode" description="Keep your todos on this device and upload them only when you press Sync.">
+      <div className="flex items-center justify-between gap-4">
+        <Label htmlFor="local-mode" className="text-sm">{state ? "On" : "Off"}</Label>
+        <Switch id="local-mode" checked={!!state} disabled={!ready || busy} onCheckedChange={(on) => (on ? setConfirmOn(true) : turnOff())} aria-label="Local-only mode" />
+      </div>
+      {state && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/60 px-4 py-3 text-sm">
+          <span className="text-muted-foreground">
+            {pending > 0 ? <span className="font-medium text-primary">{pending} unsynced {pending === 1 ? "change" : "changes"}</span> : "Everything is synced"}
+            {" · last sync "}{timeAgo(state.lastSyncAt)}
+          </span>
+          <Button size="icon-sm" className="w-auto gap-1.5 px-3 text-sm" onClick={sync} disabled={busy}>
+            <RefreshCw className={busy ? "animate-spin" : undefined} /> Sync now
+          </Button>
+        </div>
+      )}
+      <p className="mt-3 flex gap-2 text-xs text-muted-foreground">
+        <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-prio-medium" />
+        Not recommended if you use more than one device. Changes on each device can conflict; they are merged automatically when you sync.
+      </p>
+
+      <AlertDialog open={confirmOn} onOpenChange={setConfirmOn}>
+        <AlertDialogContent
+          title="Turn on local-only mode?"
+          footer={
+            <>
+              <AlertDialogCancel asChild><Button variant="secondary">Cancel</Button></AlertDialogCancel>
+              <Button onClick={turnOn} disabled={busy}>{busy && <Loader2 className="animate-spin" />} Turn on</Button>
+            </>
+          }
+        >
+          <div className="space-y-3 text-sm">
+            <p>Your todos will be saved <strong>only in this browser</strong> until you press <strong>Sync</strong>. Nothing is uploaded automatically.</p>
+            <div className="flex gap-2 rounded-xl bg-prio-medium/15 p-3">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-prio-medium" />
+              <p>
+                <strong>Using more than one device can cause problems.</strong> Each device keeps its own copy, so the same todo may be changed in two places.
+                When you sync we merge both copies automatically: edits to different todos are combined, the most recent edit to the same todo wins, and a delete never throws away a newer edit.
+                You may still see results you didn&apos;t expect.
+              </p>
+            </div>
+            <p className="text-muted-foreground">Clearing this browser&apos;s data before syncing permanently loses any unsynced changes.</p>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </Section>
   );
 }

@@ -15,7 +15,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const input = parseTodo(await req.json().catch(() => null), false);
   if (typeof input === "string") return fail(input);
 
-  const patch = { ...input, ...(input.completed !== undefined && input.completed !== todo.completed
+  const patch = { ...input, updatedAt: new Date().toISOString(), ...(input.completed !== undefined && input.completed !== todo.completed
     ? { completedAt: input.completed ? new Date().toISOString() : null }
     : {}) };
   await db.todos.update(id, patch);

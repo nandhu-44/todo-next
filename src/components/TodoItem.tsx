@@ -20,13 +20,15 @@ interface Props {
   todo: Todo;
   canDrag: boolean;
   onDragEnd: () => void;
+  /** the list container: an item cannot be dragged outside it */
+  constraintsRef: React.RefObject<HTMLElement | null>;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onTag: (tag: string) => void;
 }
 
-export default function TodoItem({ todo, canDrag, onDragEnd, onToggle, onEdit, onDelete, onTag }: Props) {
+export default function TodoItem({ todo, canDrag, onDragEnd, constraintsRef, onToggle, onEdit, onDelete, onTag }: Props) {
   const controls = useDragControls();
   const [open, setOpen] = useState(false);
   const [burst, setBurst] = useState(0);
@@ -41,11 +43,14 @@ export default function TodoItem({ todo, canDrag, onDragEnd, onToggle, onEdit, o
       dragListener={false}
       dragControls={controls}
       onDragEnd={onDragEnd}
+      dragConstraints={constraintsRef}
+      dragElastic={0}
+      dragMomentum={false}
       layout="position"
       initial={{ opacity: 0, y: -12, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: 40, scale: 0.95, transition: { duration: 0.18 } }}
-      whileDrag={{ scale: 1.02, boxShadow: "0 18px 40px hsl(0 0% 0% / .25)", zIndex: 20 }}
+      whileDrag={{ boxShadow: "0 18px 40px hsl(0 0% 0% / .25)", zIndex: 20 }}
       transition={{ type: "spring", stiffness: 420, damping: 32 }}
       className="surface relative list-none overflow-hidden"
     >

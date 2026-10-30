@@ -1,12 +1,16 @@
 "use client";
 import { AnimatePresence, Reorder, motion } from "framer-motion";
-import { ArrowDownUp, ChevronDown, ClipboardList, Eraser, LogOut, Plus, Search, SearchX, Settings, Sparkles, X } from "lucide-react";
+import { ArrowDownUp, Check, ChevronDown, ClipboardList, Eraser, HardDrive, LogOut, Plus, RefreshCw, Search, SearchX, Settings, Sparkles, Tags, X } from "lucide-react";
+import { Popover } from "radix-ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { notify } from "@/lib/notify";
 import { daysUntil } from "@/lib/dates";
+import { readLocal, syncNow, syncSummary, timeAgo, writeLocal } from "@/lib/localStore";
+import { notify } from "@/lib/notify";
+import { countPending } from "@/lib/sync";
 import type { PublicUser, Todo } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import Logo from "./Logo";
 import Stats from "./Stats";
 import ThemeToggle from "./ThemeToggle";
@@ -21,6 +25,8 @@ import TodoItem from "./TodoItem";
 
 type Filter = "all" | "active" | "done";
 type Sort = "manual" | "newest" | "due" | "priority" | "title";
+/** cloud = every change goes straight to the server; local = changes stay in this browser until "Sync" */
+type Mode = "unknown" | "cloud" | "local";
 const PRIO_RANK = { high: 0, medium: 1, low: 2 };
 
 const SORTS: { id: Sort; label: string }[] = [
@@ -28,24 +34,30 @@ const SORTS: { id: Sort; label: string }[] = [
   { id: "newest", label: "Newest first" },
   { id: "due", label: "Due date" },
   { id: "priority", label: "Priority" },
-  { id: "title", label: "A → Z" },
+  { id: "title", label: "A \u2192 Z" },
 ];
 
 export default function TodoApp({ user }: { user: PublicUser }) {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>("unknown");
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [base, setBase] = useState<Todo[]>([]); // local mode: the server's todos as of the last sync
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const phase = useSkeletonPhase(loading);
   const prefsLoaded = useRef(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("manual");
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Todo | null>(null);
   const [deleting, setDeleting] = useState<Todo | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const local = mode === "local";
 
   const reload = useCallback(async () => {
     try {
@@ -55,9 +67,32 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     }
   }, []);
 
+  // Decide where todos live: a saved local copy means local-only mode, otherwise the server.
   useEffect(() => {
-    reload().finally(() => setLoading(false));
-  }, [reload]);
+    const saved = readLocal(user.id);
+    if (saved) {
+      setMode("local");
+      setTodos(saved.todos);
+      setBase(saved.base);
+      setLastSyncAt(saved.lastSyncAt);
+      setLoading(false);
+    } else {
+      setMode("cloud");
+      reload().finally(() => setLoading(false));
+    }
+  }, [user.id, reload]);
+
+  // Local mode: every change is written to this browser straight away.
+  const warnedStorage = useRef(false);
+  useEffect(() => {
+    if (!local || loading) return;
+    if (!writeLocal(user.id, { todos, base, lastSyncAt }) && !warnedStorage.current) {
+      warnedStorage.current = true;
+      notify.error("Couldn't save to this browser's storage. Sync soon so you don't lose changes.");
+    }
+  }, [local, loading, todos, base, lastSyncAt, user.id]);
+
+  const pending = useMemo(() => (local ? countPending(base, todos) : 0), [local, base, todos]);
 
   // Keyboard shortcuts: "n" new todo, "/" search
   useEffect(() => {
@@ -78,26 +113,36 @@ export default function TodoApp({ user }: { user: PublicUser }) {
       const saved = JSON.parse(localStorage.getItem(prefsKey) ?? "null");
       if (SORTS.some((o) => o.id === saved?.sort)) setSort(saved.sort);
       if (["all", "active", "done"].includes(saved?.filter)) setFilter(saved.filter);
-      if (typeof saved?.tag === "string") setTag(saved.tag);
+      if (Array.isArray(saved?.tags)) setTags(saved.tags.filter((t: unknown) => typeof t === "string"));
+      else if (typeof saved?.tag === "string") setTags([saved.tag]); // older single-tag format
     } catch {}
     prefsLoaded.current = true;
   }, [prefsKey]);
   useEffect(() => {
     if (!prefsLoaded.current) return; // don't overwrite saved values with defaults before they're read
     try {
-      localStorage.setItem(prefsKey, JSON.stringify({ sort, filter, tag }));
+      localStorage.setItem(prefsKey, JSON.stringify({ sort, filter, tags }));
     } catch {}
-  }, [prefsKey, sort, filter, tag]);
+  }, [prefsKey, sort, filter, tags]);
 
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (t: Todo) => { setEditing(t); setFormOpen(true); };
+  const toggleTag = (t: string) => setTags((l) => (l.includes(t) ? l.filter((x) => x !== t) : [...l, t]));
 
-  /* ---------------- mutations (optimistic, roll back on failure) ---------------- */
+  /* ---------------- mutations ----------------
+     cloud: optimistic update, then the server call (rolled back by reloading on failure)
+     local: just update state; the effect above saves it in this browser, nothing is sent until "Sync" */
+  const busy = syncing; // changes are blocked while a sync is in flight so they can't be overwritten
+  const stamp = () => new Date().toISOString();
+  const restoreMany = (list: Todo[]) => setTodos((l) => [...l, ...list].sort((a, b) => a.order - b.order));
+
   async function save(draft: TodoDraft) {
+    if (busy) return;
     setFormOpen(false);
     if (editing) {
       const id = editing.id;
-      setTodos((l) => l.map((t) => (t.id === id ? { ...t, ...draft } : t)));
+      setTodos((l) => l.map((t) => (t.id === id ? { ...t, ...draft, updatedAt: stamp() } : t)));
+      if (local) return notify.success("Todo updated");
       try {
         await api(`/api/todos/${id}`, { method: "PATCH", body: draft });
         notify.success("Todo updated");
@@ -105,6 +150,14 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         notify.error((e as Error).message);
         reload();
       }
+    } else if (local) {
+      const now = stamp();
+      const todo: Todo = {
+        id: crypto.randomUUID(), ...draft, completed: false, completedAt: null,
+        order: Math.min(0, ...todos.map((t) => t.order)) - 1, createdAt: now, updatedAt: now,
+      };
+      setTodos((l) => [todo, ...l]);
+      notify.success("Todo added");
     } else {
       try {
         const { todo } = await api<{ todo: Todo }>("/api/todos", { method: "POST", body: draft });
@@ -117,9 +170,11 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   }
 
   async function toggle(t: Todo) {
+    if (busy) return;
     const completed = !t.completed;
-    const stamp = completed ? new Date().toISOString() : null;
-    setTodos((l) => l.map((x) => (x.id === t.id ? { ...x, completed, completedAt: stamp } : x)));
+    const now = stamp();
+    setTodos((l) => l.map((x) => (x.id === t.id ? { ...x, completed, completedAt: completed ? now : null, updatedAt: now } : x)));
+    if (local) return;
     try {
       await api(`/api/todos/${t.id}`, { method: "PATCH", body: { completed } });
     } catch (e) {
@@ -129,8 +184,10 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   }
 
   async function remove(t: Todo) {
+    if (busy) return;
     setDeleting(null);
     setTodos((l) => l.filter((x) => x.id !== t.id));
+    if (local) return notify.success("Todo deleted", { label: "Undo", onClick: () => restoreMany([t]) });
     try {
       await api(`/api/todos/${t.id}`, { method: "DELETE" });
       notify.success("Todo deleted", {
@@ -151,12 +208,15 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   }
 
   async function clearCompleted() {
+    if (busy) return;
     setClearOpen(false);
     const gone = todos.filter((t) => t.completed);
+    const message = `Cleared ${gone.length} completed ${gone.length === 1 ? "todo" : "todos"}`;
     setTodos((l) => l.filter((t) => !t.completed));
+    if (local) return notify.success(message, { label: "Undo", onClick: () => restoreMany(gone) });
     try {
       await api("/api/todos/clear-completed", { method: "POST" });
-      notify.success(`Cleared ${gone.length} completed ${gone.length === 1 ? "todo" : "todos"}`, {
+      notify.success(message, {
         label: "Undo",
         onClick: async () => {
           await Promise.all(gone.map((t) => api("/api/todos", { method: "POST", body: { ...t, restore: t } }).catch(() => {})));
@@ -169,16 +229,32 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     }
   }
 
-  async function reorder(next: Todo[]) {
+  function reorder(next: Todo[]) {
     setTodos(next);
   }
   async function persistOrder() {
+    if (local) return setTodos((l) => l.map((t, i) => ({ ...t, order: i }))); // order values must match the list order for merging
     try {
       await api("/api/todos/reorder", { method: "POST", body: { ids: todos.map((t) => t.id) } });
     } catch (e) {
       notify.error((e as Error).message);
       reload();
     }
+  }
+
+  async function sync() {
+    if (!local || syncing) return;
+    setSyncing(true);
+    try {
+      const { state, stats } = await syncNow(user.id, { todos, base, lastSyncAt });
+      setTodos(state.todos);
+      setBase(state.base);
+      setLastSyncAt(state.lastSyncAt);
+      stats.conflicts ? notify.warning(syncSummary(stats)) : notify.success(syncSummary(stats));
+    } catch (e) {
+      notify.error(`Sync failed: ${(e as Error).message}. Your changes are still saved on this device.`);
+    }
+    setSyncing(false);
   }
 
   async function logout() {
@@ -189,18 +265,23 @@ export default function TodoApp({ user }: { user: PublicUser }) {
 
   /* ---------------- derived list ---------------- */
   const allTags = useMemo(() => [...new Set(todos.flatMap((t) => t.tags))].sort(), [todos]);
+  const tagCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of todos) for (const x of t.tags) m.set(x, (m.get(x) ?? 0) + 1);
+    return m;
+  }, [todos]);
   const stats = useMemo(() => ({
     total: todos.length,
     done: todos.filter((t) => t.completed).length,
     overdue: todos.filter((t) => !t.completed && t.dueDate && daysUntil(t.dueDate) < 0).length,
   }), [todos]);
 
-  // Drop a remembered tag filter once no todo uses that tag any more.
+  // Drop remembered tag filters that no todo uses any more.
   useEffect(() => {
-    if (!loading && tag && !allTags.includes(tag)) setTag(null);
-  }, [loading, tag, allTags]);
+    if (!loading && tags.some((t) => !allTags.includes(t))) setTags((l) => l.filter((t) => allTags.includes(t)));
+  }, [loading, tags, allTags]);
 
-  const filtering = filter !== "all" || !!query.trim() || !!tag;
+  const filtering = filter !== "all" || !!query.trim() || tags.length > 0;
   const canDrag = sort === "manual" && !filtering;
 
   const visible = useMemo(() => {
@@ -208,7 +289,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     let list = todos.filter(
       (t) =>
         (filter === "all" || (filter === "done") === t.completed) &&
-        (!tag || t.tags.includes(tag)) &&
+        (tags.length === 0 || t.tags.some((x) => tags.includes(x))) &&
         (!q || t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some((x) => x.includes(q))),
     );
     if (sort !== "manual") {
@@ -222,11 +303,12 @@ export default function TodoApp({ user }: { user: PublicUser }) {
       });
     }
     return list;
-  }, [todos, filter, tag, query, sort]);
+  }, [todos, filter, tags, query, sort]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const completedCount = stats.done;
+  const resetFilters = () => { setFilter("all"); setQuery(""); setTags([]); };
 
   return (
     <main className="mx-auto max-w-3xl px-3 pb-24 pt-5 sm:px-6">
@@ -265,6 +347,23 @@ export default function TodoApp({ user }: { user: PublicUser }) {
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-6 space-y-4">
         <Stats {...stats} />
+
+        {local && (
+          <div className="surface flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <HardDrive className="size-4 text-primary" />
+              <span>
+                <span className="font-medium text-foreground">Local-only mode</span>
+                {" · "}
+                {pending > 0 ? <span className="font-medium text-primary">{pending} unsynced {pending === 1 ? "change" : "changes"}</span> : "all synced"}
+                {" · last sync "}{timeAgo(lastSyncAt)}
+              </span>
+            </span>
+            <Button size="icon-sm" variant={pending > 0 ? "default" : "outline"} className="w-auto gap-1.5 px-3 text-sm" onClick={sync} disabled={syncing}>
+              <RefreshCw className={cn(syncing && "animate-spin")} /> {syncing ? "Syncing" : "Sync"}
+            </Button>
+          </div>
+        )}
 
         {/* actions */}
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
@@ -306,18 +405,21 @@ export default function TodoApp({ user }: { user: PublicUser }) {
               onChange={setFilter}
               options={[{ value: "all", label: "All" }, { value: "active", label: "Active" }, { value: "done", label: "Done" }]}
             />
-            <AnimatePresence>
-              {tag && (
-                <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} onClick={() => setTag(null)} className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs text-primary-foreground">
-                  #{tag} <X className="size-3" />
+            {allTags.length > 0 && <TagFilter tags={allTags} counts={tagCounts} selected={tags} onToggle={toggleTag} onClear={() => setTags([])} />}
+            <AnimatePresence initial={false}>
+              {tags.map((t) => (
+                <motion.button
+                  key={t}
+                  layout
+                  initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={() => toggleTag(t)}
+                  aria-label={`Remove tag filter ${t}`}
+                  className="flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs text-primary-foreground"
+                >
+                  #{t} <X className="size-3" />
                 </motion.button>
-              )}
+              ))}
             </AnimatePresence>
-            {!tag && allTags.slice(0, 6).map((t) => (
-              <button key={t} onClick={() => setTag(t)} className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition hover:bg-primary/15 hover:text-primary">
-                #{t}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -325,20 +427,20 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         {phase === "wait" ? null : phase === "skeleton" ? (
           <TodoSkeleton />
         ) : visible.length === 0 ? (
-          <EmptyState filtering={filtering} onAdd={openAdd} onReset={() => { setFilter("all"); setQuery(""); setTag(null); }} />
+          <EmptyState filtering={filtering} onAdd={openAdd} onReset={resetFilters} />
         ) : (
-          <>
-            <Reorder.Group axis="y" values={visible} onReorder={reorder} className="space-y-3">
+          <div className={cn(syncing && "pointer-events-none opacity-60 transition-opacity")}>
+            <Reorder.Group ref={listRef} as="ul" axis="y" values={visible} onReorder={reorder} className="space-y-3">
               <AnimatePresence initial={false}>
                 {visible.map((t) => (
-                  <TodoItem key={t.id} todo={t} canDrag={canDrag} onDragEnd={persistOrder} onToggle={() => toggle(t)} onEdit={() => openEdit(t)} onDelete={() => setDeleting(t)} onTag={setTag} />
+                  <TodoItem key={t.id} todo={t} canDrag={canDrag} constraintsRef={listRef} onDragEnd={persistOrder} onToggle={() => toggle(t)} onEdit={() => openEdit(t)} onDelete={() => setDeleting(t)} onTag={toggleTag} />
                 ))}
               </AnimatePresence>
             </Reorder.Group>
             {canDrag && visible.length > 1 && (
-              <p className="pt-1 text-center text-xs text-muted-foreground">Drag the handle to reorder</p>
+              <p className="pt-3 text-center text-xs text-muted-foreground">Drag the handle to reorder</p>
             )}
-          </>
+          </div>
         )}
       </motion.div>
 
@@ -375,6 +477,53 @@ export default function TodoApp({ user }: { user: PublicUser }) {
         </AlertDialogContent>
       </AlertDialog>
     </main>
+  );
+}
+
+/** Compact multi-select tag filter in a popover, so a long tag list never clutters the page. */
+function TagFilter({ tags, counts, selected, onToggle, onClear }: { tags: string[]; counts: Map<string, number>; selected: string[]; onToggle: (t: string) => void; onClear: () => void }) {
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <Button variant="outline" size="icon-sm" className="h-[34px] w-auto gap-1.5 px-3 text-sm" aria-label="Filter by tag">
+          <Tags /> Tags
+          {selected.length > 0 && <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] leading-5 text-primary-foreground">{selected.length}</span>}
+        </Button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="start"
+          sideOffset={6}
+          className="z-50 w-60 rounded-xl border border-border bg-popover p-1.5 shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+        >
+          <div className="max-h-64 overflow-y-auto">
+            {tags.map((t) => {
+              const on = selected.includes(t);
+              return (
+                <button
+                  key={t}
+                  role="menuitemcheckbox"
+                  aria-checked={on}
+                  onClick={() => onToggle(t)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm outline-none transition hover:bg-primary/10 focus-visible:bg-primary/10"
+                >
+                  <span className={cn("grid size-4 place-items-center rounded border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
+                    {on && <Check className="size-3" strokeWidth={3.5} />}
+                  </span>
+                  <span className="flex-1 truncate">#{t}</span>
+                  <span className="text-xs text-muted-foreground">{counts.get(t)}</span>
+                </button>
+              );
+            })}
+          </div>
+          {selected.length > 0 && (
+            <button onClick={onClear} className="mt-1 w-full rounded-lg border-t border-border px-2.5 py-2 text-left text-xs text-muted-foreground hover:text-foreground">
+              Clear tag filter
+            </button>
+          )}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
