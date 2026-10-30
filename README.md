@@ -28,3 +28,10 @@ Existing users from the MERN app are not migrated (passwords were stored with a 
 - **Two-step verification (TOTP)** with QR setup, replay protection and 8 one-time recovery codes. Secrets are AES-256-GCM encrypted at rest.
 - **Account settings** (`/settings`): name, change/set password, 2FA, connected Google account, delete account.
 - Login, 2FA and sensitive account actions are rate-limited (in-memory; use a shared store such as Redis if you run multiple instances).
+
+## Accounts
+- **Email is the account key.** Addresses are normalised (lower-cased; for Gmail, dots and `+tags` are ignored), and uniqueness is enforced in the
+  database (including under concurrent sign-ups), so one inbox can never become two accounts.
+- Google and email + password sign-in reach the **same account**. Sign in with Google, then add a password under *Settings → Password*
+  (or use "Forgot password"), and you can use either. *Settings → Sign-in methods* shows what is connected; Google can be disconnected once a password exists.
+- List preferences (sort order, status filter, tag filter) are remembered per user in the browser.

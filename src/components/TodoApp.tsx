@@ -36,6 +36,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const phase = useSkeletonPhase(loading);
+  const prefsLoaded = useRef(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("manual");
   const [query, setQuery] = useState("");
@@ -69,6 +70,24 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // List preferences (sort order, status filter, tag filter) are remembered per user in this browser.
+  const prefsKey = `todo-next:prefs:${user.id}`;
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(prefsKey) ?? "null");
+      if (SORTS.some((o) => o.id === saved?.sort)) setSort(saved.sort);
+      if (["all", "active", "done"].includes(saved?.filter)) setFilter(saved.filter);
+      if (typeof saved?.tag === "string") setTag(saved.tag);
+    } catch {}
+    prefsLoaded.current = true;
+  }, [prefsKey]);
+  useEffect(() => {
+    if (!prefsLoaded.current) return; // don't overwrite saved values with defaults before they're read
+    try {
+      localStorage.setItem(prefsKey, JSON.stringify({ sort, filter, tag }));
+    } catch {}
+  }, [prefsKey, sort, filter, tag]);
 
   const openAdd = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (t: Todo) => { setEditing(t); setFormOpen(true); };
@@ -175,6 +194,11 @@ export default function TodoApp({ user }: { user: PublicUser }) {
     done: todos.filter((t) => t.completed).length,
     overdue: todos.filter((t) => !t.completed && t.dueDate && daysUntil(t.dueDate) < 0).length,
   }), [todos]);
+
+  // Drop a remembered tag filter once no todo uses that tag any more.
+  useEffect(() => {
+    if (!loading && tag && !allTags.includes(tag)) setTag(null);
+  }, [loading, tag, allTags]);
 
   const filtering = filter !== "all" || !!query.trim() || !!tag;
   const canDrag = sort === "manual" && !filtering;

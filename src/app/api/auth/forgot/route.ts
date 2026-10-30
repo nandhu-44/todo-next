@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { json } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { normalizeEmail } from "@/lib/email";
 import { sendResetMail } from "@/lib/mail";
 import { requestOrigin } from "@/lib/origin";
 
@@ -8,7 +9,7 @@ const hashToken = (t: string) => createHash("sha256").update(t).digest("hex");
 
 export async function POST(req: Request) {
   const b = await req.json().catch(() => null);
-  const email = String(b?.email ?? "").trim().toLowerCase();
+  const email = normalizeEmail(String(b?.email ?? ""));
   const db = await getDb();
   const user = email ? await db.users.findOne({ email }) : null;
   let devLink: string | undefined;

@@ -13,7 +13,7 @@ const config: Config = {
         muted: { DEFAULT: "hsl(var(--muted) / <alpha-value>)", foreground: "hsl(var(--muted-foreground) / <alpha-value>)" },
         border: "hsl(var(--border) / <alpha-value>)",
         primary: { DEFAULT: "hsl(var(--primary) / <alpha-value>)", foreground: "hsl(var(--primary-foreground) / <alpha-value>)" },
-        destructive: { DEFAULT: "hsl(var(--destructive) / <alpha-value>)", foreground: "0 0% 100%" },
+        destructive: { DEFAULT: "hsl(var(--destructive) / <alpha-value>)", foreground: "hsl(0 0% 100%)" },
         prio: { high: "hsl(var(--p-high) / <alpha-value>)", medium: "hsl(var(--p-medium) / <alpha-value>)", low: "hsl(var(--p-low) / <alpha-value>)" },
       },
       fontFamily: {

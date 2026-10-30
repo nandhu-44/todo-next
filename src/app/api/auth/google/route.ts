@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getUser } from "@/lib/auth";
 import { googleConfig, oauthCookie, signingKey } from "@/lib/google";
 
 export async function GET(req: Request) {
@@ -13,7 +14,11 @@ export async function GET(req: Request) {
   const verifier = randomBytes(32).toString("base64url");
   const remember = url.searchParams.get("remember") !== "0";
 
-  const jwt = await new SignJWT({ state, verifier, remember })
+  // "Connect Google" from settings: remember who is linking so the callback can't attach it to anyone else.
+  const linkUserId = url.searchParams.get("link") === "1" ? (await getUser())?.id : undefined;
+  if (url.searchParams.get("link") === "1" && !linkUserId) return NextResponse.redirect(new URL("/signin", url.origin));
+
+  const jwt = await new SignJWT({ state, verifier, remember, linkUserId })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("10m")
     .sign(signingKey());
