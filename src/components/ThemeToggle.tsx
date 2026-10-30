@@ -40,17 +40,22 @@ const apply = (t: Theme) => document.documentElement.classList.toggle("dark", t 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("system");
   const [mounted, setMounted] = useState(false);
+  const [osDark, setOsDark] = useState(false); // what the browser currently reports for prefers-color-scheme
 
   // Read the saved choice after mount (the inline script has already applied it to <html>).
   useEffect(() => {
     setTheme(stored());
+    setOsDark(prefersDark());
     setMounted(true);
   }, []);
 
   // Follow OS changes while in "system" mode, and stay in sync with other tabs.
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onOs = () => theme === "system" && apply("system");
+    const onOs = () => {
+      setOsDark(mq.matches);
+      if (theme === "system") apply("system");
+    };
     const onStorage = (e: StorageEvent) => {
       if (e.key !== KEY) return;
       const t = stored();
@@ -84,9 +89,13 @@ export default function ThemeToggle() {
         {OPTIONS.map(({ value, label, icon: Icon }) => (
           <DropdownMenuItem key={value} onSelect={() => choose(value)}>
             <Icon /> {label}
+            {value === "system" && mounted && <span className="text-xs text-muted-foreground">({osDark ? "dark" : "light"})</span>}
             {theme === value && <Check className="ml-auto text-primary" />}
           </DropdownMenuItem>
         ))}
+        <p className="max-w-44 px-3 pb-2 pt-1 text-[11px] leading-snug text-muted-foreground">
+          System follows your browser's light/dark setting (in Chrome: Settings → Appearance → Mode).
+        </p>
       </DropdownMenuContent>
     </DropdownMenu>
   );

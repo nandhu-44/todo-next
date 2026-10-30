@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
 import { useState } from "react";
 import { AUTH_ERRORS, AuthShell, Field, FormError, GoogleButton, OrDivider, SubmitButton } from "./AuthShell";
@@ -8,7 +7,6 @@ import { FormCheckbox } from "./ui/checkbox";
 import { api } from "@/lib/api";
 
 export default function SignInForm({ googleEnabled, initialError }: { googleEnabled: boolean; initialError?: string }) {
-  const router = useRouter();
   const [error, setError] = useState(initialError ? AUTH_ERRORS[initialError] ?? "" : "");
   const [loading, setLoading] = useState(false);
 
@@ -22,9 +20,8 @@ export default function SignInForm({ googleEnabled, initialError }: { googleEnab
         method: "POST",
         body: { email: f.get("email"), password: f.get("password"), remember: f.get("remember") === "on" },
       });
-      if (twoFactor) return router.replace("/two-factor");
-      router.replace("/");
-      router.refresh();
+      // full page load on purpose: a soft router.replace()+refresh() races and can leave the old signed-in UI on screen
+      window.location.assign(twoFactor ? "/two-factor" : "/");
     } catch (err) {
       setError((err as Error).message);
       setLoading(false);
