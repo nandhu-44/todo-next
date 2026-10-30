@@ -151,6 +151,24 @@ export function tokens(p: ThemeParams, dark: boolean): Tokens {
   };
 }
 
+/** "16 62% 44%" -> "#b6502b" */
+export function tokenToHex(token: string): string {
+  const [h, s, l] = token.replace(/%/g, "").split(" ").map(Number);
+  return "#" + hslToRgb(h, s, l).map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+}
+
+/** The accent colour in light and dark mode, as hex (used for the favicon and the browser theme colour). */
+export function accentHexes(a: Appearance): { light: string; dark: string } {
+  const p = themeParams(a);
+  return { light: tokenToHex(tokens(p, false)["--primary"]), dark: tokenToHex(tokens(p, true)["--primary"]) };
+}
+
+/** URL of the favicon for an appearance; the route renders the app mark in these colours. */
+export function iconUrl(a: Appearance): string {
+  const { light, dark } = accentHexes(a);
+  return `/api/icon?l=${light.slice(1)}&d=${dark.slice(1)}`;
+}
+
 const decl = (t: Tokens) => Object.entries(t).map(([k, v]) => `${k}:${v}`).join(";");
 
 /** The stylesheet that applies an appearance. Higher specificity than the defaults in globals.css, so order doesn't matter. */

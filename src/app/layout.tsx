@@ -1,17 +1,40 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { APPEARANCE_COOKIE, appearanceCss, parseAppearance } from "@/lib/appearance";
+import { APPEARANCE_COOKIE, DEFAULT_APPEARANCE, accentHexes, appearanceCss, iconUrl, parseAppearance, type Appearance } from "@/lib/appearance";
 import Background from "@/components/Background";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "ToDo Next",
-  description: "A beautiful, fast todo app with priorities, due dates, tags and more.",
-  authors: [{ name: "Nandhu Krishnan A" }],
-};
-export const viewport: Viewport = { themeColor: "#b5502f", width: "device-width", initialScale: 1 };
+/** The device's saved appearance (cookie), or the default. */
+async function savedAppearance(): Promise<Appearance> {
+  try {
+    const raw = (await cookies()).get(APPEARANCE_COOKIE)?.value;
+    if (raw) return parseAppearance(JSON.parse(raw));
+  } catch {}
+  return DEFAULT_APPEARANCE;
+}
+
+// The favicon and browser theme colour follow the account's theme.
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "ToDo Next",
+    description: "A beautiful, fast todo app with priorities, due dates, tags and more.",
+    authors: [{ name: "Nandhu Krishnan A" }],
+    icons: { icon: { url: iconUrl(await savedAppearance()), type: "image/svg+xml" } },
+  };
+}
+export async function generateViewport(): Promise<Viewport> {
+  const { light, dark } = accentHexes(await savedAppearance());
+  return {
+    width: "device-width",
+    initialScale: 1,
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: light },
+      { media: "(prefers-color-scheme: dark)", color: dark },
+    ],
+  };
+}
 
 // Runs before first paint so the saved theme never flashes. Modes: "light" | "dark" | "system" (default).
 // The choice is read from the `theme` cookie (also used by the server), falling back to localStorage.
