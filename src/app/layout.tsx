@@ -43,7 +43,6 @@ const themeScript = `(function(){var t=null;try{var m=document.cookie.match(/(?:
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Server-render the saved theme so the first paint is already correct even if scripts or storage are blocked.
   const jar = await cookies();
-  const saved = jar.get("theme")?.value;
   // the saved font / theme / radius, rendered into the first HTML so there is no flash
   let css = "";
   try {
@@ -51,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     if (raw) css = appearanceCss(parseAppearance(JSON.parse(raw)));
   } catch {}
   return (
-    <html lang="en" suppressHydrationWarning className={saved === "dark" ? "dark" : undefined}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <style id="appearance" dangerouslySetInnerHTML={{ __html: css }} />

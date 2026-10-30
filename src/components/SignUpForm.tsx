@@ -1,13 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Lock, Mail, User } from "lucide-react";
 import { useState } from "react";
 import { AuthShell, Field, FormError, GoogleButton, OrDivider, SubmitButton } from "./AuthShell";
 import { api } from "@/lib/api";
 
 export default function SignUpForm({ googleEnabled }: { googleEnabled: boolean }) {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,8 +20,8 @@ export default function SignUpForm({ googleEnabled }: { googleEnabled: boolean }
         method: "POST",
         body: { name: f.get("name"), email: f.get("email"), password: f.get("password") },
       });
-      router.replace("/");
-      router.refresh();
+      // full page load on purpose: a soft router.replace()+refresh() races and can leave the old signed-in UI on screen
+      window.location.assign("/");
     } catch (err) {
       setError((err as Error).message);
       setLoading(false);

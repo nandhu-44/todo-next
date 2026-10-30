@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -8,7 +7,6 @@ import { AuthShell, Field, FormError, SubmitButton } from "./AuthShell";
 import { OtpInput } from "./OtpInput";
 
 export default function TwoFactorForm() {
-  const router = useRouter();
   const [useRecovery, setUseRecovery] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,8 +17,8 @@ export default function TwoFactorForm() {
     setError("");
     try {
       await api("/api/auth/2fa", { method: "POST", body });
-      router.replace("/");
-      router.refresh();
+      // full page load on purpose: a soft router.replace()+refresh() races and can leave the old signed-in UI on screen
+      window.location.assign("/");
     } catch (err) {
       setError((err as Error).message);
       setAttempt((n) => n + 1);

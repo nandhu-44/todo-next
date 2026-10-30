@@ -284,8 +284,8 @@ export default function TodoApp({ user }: { user: PublicUser }) {
 
   async function logout() {
     await api("/api/auth/logout", { method: "POST" });
-    router.replace("/signin");
-    router.refresh();
+    // full page load: clears client-side caches and avoids a router.replace()+refresh() race that left the old UI showing
+    window.location.assign("/signin");
   }
 
   /* ---------------- derived list ---------------- */

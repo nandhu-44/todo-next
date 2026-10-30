@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, Check, Copy, Download, HardDrive, KeyRound, Loader2, Lock, RefreshCw, ShieldCheck, ShieldOff, Trash2, User } from "lucide-react";
 import Logo from "./Logo";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { clearLocal, enableLocalMode, readLocal, syncNow, syncSummary, timeAgo, type LocalState } from "@/lib/localStore";
@@ -22,7 +21,6 @@ import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 
 export default function SettingsView({ initial, googleEnabled, error, linked }: { initial: PublicUser; googleEnabled: boolean; error?: string; linked?: boolean }) {
-  const router = useRouter();
   const [user, setUser] = useState(initial);
 
   // Result of a "Connect Google" round-trip arrives as a query string; show it once, then tidy the URL.
@@ -55,7 +53,7 @@ export default function SettingsView({ initial, googleEnabled, error, linked }: 
         <GoogleSection user={user} googleEnabled={googleEnabled} onChange={setUser} />
         <AppearanceSettings initial={user.appearance} />
         <StorageSection userId={user.id} />
-        <DeleteSection user={user} onDeleted={() => { clearLocal(user.id); router.replace("/signup"); router.refresh(); }} />
+        <DeleteSection user={user} onDeleted={() => { clearLocal(user.id); window.location.assign("/signup"); }} />
       </div>
     </main>
   );
