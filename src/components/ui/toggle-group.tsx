@@ -21,7 +21,7 @@ export function SegmentedControl<V extends string>({
       className={cn("inline-flex rounded-xl bg-muted p-1", className)}
     >
       {options.map((o) => (
-        <T.Item key={o.value} value={o.value} className="relative flex-1 rounded-lg px-3 py-1.5 font-supercell text-sm tracking-wide outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        <T.Item key={o.value} value={o.value} className="relative flex-1 rounded-lg px-3 py-1.5 font-supercell text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary">
           {value === o.value && (
             <motion.span layoutId={id} className={cn("absolute inset-0 rounded-lg bg-primary", o.activeClass)} transition={{ type: "spring", stiffness: 500, damping: 35 }} />
           )}

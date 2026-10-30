@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import AppearanceSync from "@/components/AppearanceSync";
 import TodoApp from "@/components/TodoApp";
 import { getUser, toPublic } from "@/lib/auth";
 
@@ -7,5 +8,11 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const user = await getUser();
   if (!user) redirect("/signin");
-  return <TodoApp user={toPublic(user)} />;
+  const pub = toPublic(user);
+  return (
+    <>
+      <AppearanceSync appearance={pub.appearance} />
+      <TodoApp user={pub} />
+    </>
+  );
 }

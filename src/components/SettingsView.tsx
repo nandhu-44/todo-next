@@ -12,29 +12,14 @@ import { countPending } from "@/lib/sync";
 import type { PublicUser } from "@/lib/types";
 import { AUTH_ERRORS, GoogleButton } from "./AuthShell";
 import { OtpInput } from "./OtpInput";
+import AppearanceSettings from "./AppearanceSettings";
+import { Section } from "./SettingsSection";
 import ThemeToggle from "./ThemeToggle";
 import { Button } from "./ui/button";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, Dialog, DialogContent } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
-
-function Section({ icon: Icon, title, description, children, danger }: { icon: typeof User; title: string; description?: string; children: React.ReactNode; danger?: boolean }) {
-  return (
-    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className={`surface p-5 ${danger ? "border-destructive/40" : ""}`}>
-      <div className="mb-4 flex items-start gap-3">
-        <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${danger ? "bg-destructive/12 text-destructive" : "bg-primary/15 text-primary"}`}>
-          <Icon className="size-5" />
-        </span>
-        <div>
-          <h2 className="heading text-lg">{title}</h2>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
-        </div>
-      </div>
-      {children}
-    </motion.section>
-  );
-}
 
 export default function SettingsView({ initial, googleEnabled, error, linked }: { initial: PublicUser; googleEnabled: boolean; error?: string; linked?: boolean }) {
   const router = useRouter();
@@ -68,6 +53,7 @@ export default function SettingsView({ initial, googleEnabled, error, linked }: 
         <PasswordSection user={user} onChange={setUser} />
         <TwoFactorSection user={user} onChange={setUser} />
         <GoogleSection user={user} googleEnabled={googleEnabled} onChange={setUser} />
+        <AppearanceSettings initial={user.appearance} />
         <StorageSection userId={user.id} />
         <DeleteSection user={user} onDeleted={() => { clearLocal(user.id); router.replace("/signup"); router.refresh(); }} />
       </div>
@@ -270,7 +256,7 @@ function SetupDialog({ data, onClose, onEnabled }: { data: { qr: string; secret:
               <img src={data.qr} alt="QR code for your authenticator app" className="size-44 rounded-xl bg-white p-2" />
               <button
                 onClick={() => navigator.clipboard.writeText(data.secret).then(() => notify.success("Key copied"))}
-                className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-mono text-xs tracking-wider hover:bg-muted/70"
+                className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 font-mono text-xsr hover:bg-muted/70"
                 title="Copy setup key"
               >
                 {data.secret.match(/.{1,4}/g)?.join(" ")} <Copy className="size-3.5" />

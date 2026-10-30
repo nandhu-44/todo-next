@@ -41,3 +41,10 @@ Existing users from the MERN app are not migrated (passwords were stored with a 
 Because each device then holds its own copy, the server does a three-way merge on sync (`src/lib/sync.ts`) using the snapshot from the last sync:
 edits to different todos combine, the newest edit wins when the same todo changed on both sides, a delete never discards a newer edit, and a manual
 reorder on the syncing device is kept. Run `npm test` for the merge scenarios. (Conflict resolution compares device timestamps, so badly wrong device clocks can pick the wrong "newest".)
+
+## Appearance
+*Settings → Appearance* lets each account choose a font (Lilita One + Poppins, Fraunces + Public Sans, IBM Plex Sans, Literata, Atkinson Hyperlegible Next,
+JetBrains Mono), one of six colour themes (Terracotta, Moss, Harbor, Saffron, Rosewood, Graphite) or a custom theme, and the corner roundness.
+Changes preview live across the whole app and are saved to the account (and mirrored in a cookie so the first server-rendered paint is already themed on any device you sign in on).
+Light and dark palettes are generated from a theme's accent colour, background hue and tint strength (`src/lib/appearance.ts`); accent text is auto-adjusted to meet WCAG AA contrast,
+which `npm test` verifies for every preset in both modes.
