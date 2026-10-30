@@ -21,13 +21,15 @@ interface Props {
   open: boolean;
   todo?: Todo | null;
   allTags: string[];
+  /** pre-selected due date for a new todo (e.g. the day picked in the calendar) */
+  defaultDueDate?: string;
   onClose: () => void;
   onSubmit: (draft: TodoDraft) => void;
 }
 
 const cleanTag = (t: string) => t.trim().toLowerCase().replace(/^#/, "");
 
-export default function TodoForm({ open, todo, allTags, onClose, onSubmit }: Props) {
+export default function TodoForm({ open, todo, allTags, defaultDueDate, onClose, onSubmit }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
@@ -43,11 +45,11 @@ export default function TodoForm({ open, todo, allTags, onClose, onSubmit }: Pro
     setTitle(todo?.title ?? "");
     setDescription(todo?.description ?? "");
     setPriority(todo?.priority ?? "medium");
-    setDueDate(todo?.dueDate ?? "");
+    setDueDate(todo?.dueDate ?? defaultDueDate ?? "");
     setTags(todo?.tags ?? []);
     setTagInput("");
     setTitleError(false);
-  }, [open, todo]);
+  }, [open, todo, defaultDueDate]);
 
   const addTag = (raw: string) => {
     const t = cleanTag(raw);
