@@ -5,6 +5,13 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // corner radius follows the user's setting (--radius, default 12px)
+      borderRadius: {
+        md: "max(0px, calc(var(--radius) - 6px))",
+        lg: "max(0px, calc(var(--radius) - 2px))",
+        xl: "var(--radius)",
+        "2xl": "calc(var(--radius) * 1.333)",
+      },
       colors: {
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",
@@ -17,8 +24,8 @@ const config: Config = {
         prio: { high: "hsl(var(--p-high) / <alpha-value>)", medium: "hsl(var(--p-medium) / <alpha-value>)", low: "hsl(var(--p-low) / <alpha-value>)" },
       },
       fontFamily: {
-        supercell: ["Lilita One", "sans-serif"],
-        poppins: ["Poppins", "sans-serif"],
+        supercell: ["var(--font-heading)"],
+        poppins: ["var(--font-body)"],
       },
       keyframes: {
         float: {

@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getDb, type UserDoc } from "./db";
+import { APPEARANCE_COOKIE, parseAppearance } from "./appearance";
 import type { PublicUser } from "./types";
 
 const COOKIE = "todo_session";
@@ -23,9 +24,23 @@ export const toPublic = (u: UserDoc): PublicUser => ({
   google: !!u.googleId,
   totpEnabled: !!u.totpEnabled,
   recoveryLeft: u.recoveryCodes?.length ?? 0,
+  appearance: parseAppearance(u.appearance),
 });
 
+/** Device cookie holding the appearance, so the very first server-rendered paint is already themed. */
+export async function setAppearanceCookie(appearance: unknown) {
+  (await cookies()).set(APPEARANCE_COOKIE, JSON.stringify(parseAppearance(appearance)), {
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
+
 export async function createSession(userId: string, remember: boolean) {
+  // signing in on a new device brings the account's saved appearance along
+  const account = await (await getDb()).users.findOne({ id: userId });
+  if (account?.appearance) await setAppearanceCookie(account.appearance);
   const days = remember ? 30 : 1;
   const token = await new SignJWT({})
     .setProtectedHeader({ alg: "HS256" })

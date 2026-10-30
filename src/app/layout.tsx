@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
+import { APPEARANCE_COOKIE, appearanceCss, parseAppearance } from "@/lib/appearance";
 import Background from "@/components/Background";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,11 +19,19 @@ const themeScript = `(function(){var t=null;try{var m=document.cookie.match(/(?:
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Server-render the saved theme so the first paint is already correct even if scripts or storage are blocked.
-  const saved = (await cookies()).get("theme")?.value;
+  const jar = await cookies();
+  const saved = jar.get("theme")?.value;
+  // the saved font / theme / radius, rendered into the first HTML so there is no flash
+  let css = "";
+  try {
+    const raw = jar.get(APPEARANCE_COOKIE)?.value;
+    if (raw) css = appearanceCss(parseAppearance(JSON.parse(raw)));
+  } catch {}
   return (
     <html lang="en" suppressHydrationWarning className={saved === "dark" ? "dark" : undefined}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <style id="appearance" dangerouslySetInnerHTML={{ __html: css }} />
       </head>
       <body>
         <Background />

@@ -80,7 +80,7 @@ export default function CalendarView({ todos, onToggle, onEdit, onAdd }: Props) 
         </div>
 
         {/* grid */}
-        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
+        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase text-muted-foreground sm:text-xs">
           {weekdays.map((d) => <div key={d} className="py-1">{d}</div>)}
         </div>
         <div className="mt-1 grid grid-cols-7 gap-1" role="grid" aria-label={format(month, "MMMM yyyy")}>

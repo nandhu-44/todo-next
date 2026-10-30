@@ -18,6 +18,8 @@ export interface UserDoc {
   totpLastStep?: number;
   /** sha256 hashes of unused recovery codes */
   recoveryCodes?: string[];
+  /** font / colour theme / radius chosen in Settings (validated by parseAppearance) */
+  appearance?: unknown;
   createdAt: string;
 }
 export type TodoDoc = Todo & { userId: string };

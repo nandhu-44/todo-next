@@ -1,3 +1,5 @@
+import type { Appearance } from "./appearance";
+
 export type Priority = "low" | "medium" | "high";
 
 export interface Todo {
@@ -23,4 +25,5 @@ export interface PublicUser {
   google: boolean;
   totpEnabled: boolean;
   recoveryLeft: number;
+  appearance: Appearance;
 }
