@@ -96,16 +96,21 @@ export async function destroySession() {
   (await cookies()).delete(COOKIE);
 }
 
-export async function getUser(): Promise<UserDoc | null> {
+/** The signed-in user's id from the session cookie alone (no database access). */
+export async function getSessionUserId(): Promise<string | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
-    if (!payload.sub) return null;
-    return (await (await getDb()).users.findOne({ id: payload.sub })) ?? null;
+    return payload.sub ?? null;
   } catch {
     return null;
   }
+}
+
+export async function getUser(): Promise<UserDoc | null> {
+  const id = await getSessionUserId();
+  return id ? ((await (await getDb()).users.findOne({ id })) ?? null) : null;
 }
 
 export const json = (data: unknown, status = 200) => NextResponse.json(data, { status });

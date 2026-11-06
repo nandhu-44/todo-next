@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { fail, json, requireUser } from "@/lib/auth";
 import { getDb, type TodoDoc } from "@/lib/db";
+import { limits } from "@/lib/limits";
 import { parseTodo, toTodo } from "@/lib/todoInput";
 
 
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
 
   const db = await getDb();
   const mine = await db.todos.find({ userId: a.user.id });
+  if (mine.length >= limits().todosPerUser) return fail(`You have reached the limit of ${limits().todosPerUser} todos. Delete some to add more.`, 403);
   // Restoring a deleted todo (undo) keeps its original id/order/createdAt.
   const restore = body?.restore;
   const id = typeof restore?.id === "string" && /^[\w-]{8,64}$/.test(restore.id) ? restore.id : randomUUID();

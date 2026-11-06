@@ -43,7 +43,7 @@ export interface Appearance {
 export const DEFAULT_APPEARANCE: Appearance = {
   font: "lilita-poppins",
   theme: "terracotta",
-  custom: { accent: "#7a5af8", hue: 250, tint: 14 },
+  custom: { accent: "#2f7f79", hue: 170, tint: 16 },
   radius: 12,
 };
 

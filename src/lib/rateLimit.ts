@@ -12,6 +12,20 @@ export function allow(key: string, max: number, windowMs: number): boolean {
   return ++e.n <= max;
 }
 
+export interface Hit { allowed: boolean; limit: number; remaining: number; resetAt: number }
+
+/** Like allow(), but also reports how many calls are left and when the window resets (for X-RateLimit-* headers). */
+export function hit(key: string, max: number, windowMs: number): Hit {
+  const now = Date.now();
+  let e = hits.get(key);
+  if (!e || e.reset < now) {
+    e = { n: 0, reset: now + windowMs };
+    hits.set(key, e);
+  }
+  e.n++;
+  return { allowed: e.n <= max, limit: max, remaining: Math.max(0, max - e.n), resetAt: e.reset };
+}
+
 export const clearLimit = (key: string) => void hits.delete(key);
 
 export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "local";

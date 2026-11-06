@@ -40,7 +40,7 @@ const SORTS: { id: Sort; label: string }[] = [
   { id: "title", label: "A \u2192 Z" },
 ];
 
-export default function TodoApp({ user }: { user: PublicUser }) {
+export default function TodoApp({ user, initialTodos }: { user: PublicUser; initialTodos: Todo[] }) {
   const router = useRouter();
   const [navigating, startNav] = useTransition(); // true while the next page is being fetched
   const [mode, setMode] = useState<Mode>("unknown");
@@ -91,10 +91,12 @@ export default function TodoApp({ user }: { user: PublicUser }) {
       setLastSyncAt(saved.lastSyncAt);
       setLoading(false);
     } else {
+      // the server already sent the todos with the page, so there is nothing to wait for
       setMode("cloud");
-      reload().finally(() => setLoading(false));
+      setTodos(initialTodos);
+      setLoading(false);
     }
-  }, [user.id, reload]);
+  }, [user.id, initialTodos]);
 
   // Local mode: every change is written to this browser straight away.
   const warnedStorage = useRef(false);

@@ -11,6 +11,7 @@ import { countPending } from "@/lib/sync";
 import type { PublicUser } from "@/lib/types";
 import { AUTH_ERRORS, GoogleButton } from "./AuthShell";
 import { OtpInput } from "./OtpInput";
+import ApiKeysSettings from "./ApiKeysSettings";
 import AppearanceSettings from "./AppearanceSettings";
 import { ProgressBar } from "./NavProgress";
 import { Section } from "./SettingsSection";
@@ -64,6 +65,7 @@ export default function SettingsView({ initial, googleEnabled, error, linked }: 
         <TwoFactorSection user={user} onChange={setUser} />
         <GoogleSection user={user} googleEnabled={googleEnabled} onChange={setUser} />
         <AppearanceSettings initial={user.appearance} />
+        <ApiKeysSettings />
         <StorageSection userId={user.id} />
         <DeleteSection user={user} onDeleted={() => { clearLocal(user.id); window.location.assign("/signup"); }} />
       </div>

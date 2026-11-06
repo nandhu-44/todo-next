@@ -48,3 +48,19 @@ JetBrains Mono), one of six colour themes (Terracotta, Moss, Harbor, Saffron, Ro
 Changes preview live across the whole app and are saved to the account (and mirrored in a cookie so the first server-rendered paint is already themed on any device you sign in on).
 Light and dark palettes are generated from a theme's accent colour, background hue and tint strength (`src/lib/appearance.ts`); accent text is auto-adjusted to meet WCAG AA contrast,
 which `npm test` verifies for every preset in both modes.
+
+## Public API
+Create keys in *Settings → API access* (shown once, stored only as a SHA-256 hash, optional expiry, read/write permissions, optional lower daily limit) and call `/api/v1`
+with `Authorization: Bearer tdn_…`. Endpoints: `GET/POST /api/v1/todos`, `GET/PATCH/DELETE /api/v1/todos/:id`, `POST /api/v1/todos/clear-completed`, `GET /api/v1/me`, `GET /api/v1/usage`.
+Docs live at `/docs` and the OpenAPI 3.1 spec at `/api/v1/openapi.json`.
+
+Quotas (all configurable, see `.env.example`): 60 requests/minute and 2,000 requests/day per key, 5 keys and 5,000 todos per account. Every response carries `X-RateLimit-*`
+(per minute) and `X-Quota-*` (per day) headers; going over returns `429` with `Retry-After`. The daily quota is counted in the database and is exact; the per-minute limit is held in
+memory per server instance, so on serverless hosting it is a best-effort burst limit. `tests/api.integration.js` exercises all of it (the header of that file shows how to run it).
+
+## Performance and diagnostics
+- The home page loads the account and its todos in parallel on the server, so the page arrives with its data (no second request).
+- Database connection: short timeouts (6 s instead of the driver's 30 s default), a small pool, indexes created in the background, and a failed connection is never cached.
+- Slow queries (over 300 ms) and each new instance's connection time are logged (`[db] …`) so they show up in the host's logs.
+- `GET /api/health` is a cheap public check. Set `HEALTH_TOKEN` and call `GET /api/health?deep=1` with `Authorization: Bearer <token>` to see connect time and round-trip latency to the database from the deployed function.
+- Biggest wins on Vercel: put the function region in the **same region as the database** (Project Settings → Functions), and use the standard `mongodb://` connection string rather than `mongodb+srv://` to skip the SRV DNS lookup on cold starts.

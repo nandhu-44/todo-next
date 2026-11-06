@@ -30,10 +30,10 @@ export function RoundCheckbox({ checked, onCheckedChange, label }: { checked: bo
 }
 
 /** Standard checkbox for forms. */
-export function FormCheckbox({ id, name, defaultChecked, children }: { id: string; name: string; defaultChecked?: boolean; children: React.ReactNode }) {
+export function FormCheckbox({ id, name, defaultChecked, checked, onCheckedChange, children }: { id: string; name: string; defaultChecked?: boolean; checked?: boolean; onCheckedChange?: (c: boolean) => void; children: React.ReactNode }) {
   return (
     <label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
-      <C.Root id={id} name={name} defaultChecked={defaultChecked} className="grid size-5 place-items-center rounded-md border border-border bg-background/60 outline-none transition focus-visible:ring-4 focus-visible:ring-primary/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary">
+      <C.Root id={id} name={name} defaultChecked={defaultChecked} checked={checked} onCheckedChange={onCheckedChange && ((c) => onCheckedChange(c === true))} className="grid size-5 place-items-center rounded-md border border-border bg-background/60 outline-none transition focus-visible:ring-4 focus-visible:ring-primary/30 data-[state=checked]:border-primary data-[state=checked]:bg-primary">
         <C.Indicator><Check className="size-3.5 text-primary-foreground" strokeWidth={3.5} /></C.Indicator>
       </C.Root>
       {children}
