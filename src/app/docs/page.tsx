@@ -27,7 +27,7 @@ export default function Docs() {
       <section className="mt-8 space-y-3">
         <h2 className="heading text-xl">Authentication</h2>
         <p className="text-sm text-muted-foreground">Create a key under <Link href="/settings" className="text-primary underline">Settings → API access</Link> and send it with every request. Keys are shown once and can be limited to read-only.</p>
-        <Code>{`curl https://YOUR-SITE/api/v1/todos \\\n  -H "Authorization: Bearer tdn_your_key_here"`}</Code>
+        <Code>{`curl https://YOUR-SITE/api/v1/todos \\\n  -H "Authorization: Bearer sk_tdn.your_key_here"`}</Code>
       </section>
 
       <section className="mt-8 space-y-3">

@@ -13,6 +13,7 @@ import { AUTH_ERRORS, GoogleButton } from "./AuthShell";
 import { OtpInput } from "./OtpInput";
 import ApiKeysSettings from "./ApiKeysSettings";
 import AppearanceSettings from "./AppearanceSettings";
+import PasskeySettings from "./PasskeySettings";
 import { ProgressBar } from "./NavProgress";
 import { Section } from "./SettingsSection";
 import ThemeToggle from "./ThemeToggle";
@@ -33,8 +34,9 @@ function BackLabel() {
   );
 }
 
-export default function SettingsView({ initial, googleEnabled, error, linked }: { initial: PublicUser; googleEnabled: boolean; error?: string; linked?: boolean }) {
+export default function SettingsView({ initial, passkeyCount: initialPasskeys, googleEnabled, error, linked }: { initial: PublicUser; passkeyCount: number; googleEnabled: boolean; error?: string; linked?: boolean }) {
   const [user, setUser] = useState(initial);
+  const [passkeyCount, setPasskeyCount] = useState(initialPasskeys);
 
   // Result of a "Connect Google" round-trip arrives as a query string; show it once, then tidy the URL.
   useEffect(() => {
@@ -63,7 +65,8 @@ export default function SettingsView({ initial, googleEnabled, error, linked }: 
         <ProfileSection user={user} onChange={setUser} />
         <PasswordSection user={user} onChange={setUser} />
         <TwoFactorSection user={user} onChange={setUser} />
-        <GoogleSection user={user} googleEnabled={googleEnabled} onChange={setUser} />
+        <PasskeySettings onCount={setPasskeyCount} />
+        <GoogleSection user={user} passkeyCount={passkeyCount} googleEnabled={googleEnabled} onChange={setUser} />
         <AppearanceSettings initial={user.appearance} />
         <ApiKeysSettings />
         <StorageSection userId={user.id} />
@@ -422,7 +425,7 @@ function DeleteSection({ user, onDeleted }: { user: PublicUser; onDeleted: () =>
 }
 
 /* ------------------------------- google ------------------------------- */
-function GoogleSection({ user, googleEnabled, onChange }: { user: PublicUser; googleEnabled: boolean; onChange: (u: PublicUser) => void }) {
+function GoogleSection({ user, passkeyCount, googleEnabled, onChange }: { user: PublicUser; passkeyCount: number; googleEnabled: boolean; onChange: (u: PublicUser) => void }) {
   const [busy, setBusy] = useState(false);
 
   async function unlink() {
@@ -449,11 +452,15 @@ function GoogleSection({ user, googleEnabled, onChange }: { user: PublicUser; go
           <span className={user.hasPassword ? "font-medium text-primary" : "text-muted-foreground"}>{user.hasPassword ? "Set up" : "Not set up — add one above"}</span>
         </li>
         <li className="flex items-center justify-between gap-3 py-2.5">
+          <span>Passkeys</span>
+          <span className={passkeyCount > 0 ? "font-medium text-primary" : "text-muted-foreground"}>{passkeyCount > 0 ? `${passkeyCount} set up` : "None yet, add one above"}</span>
+        </li>
+        <li className="flex items-center justify-between gap-3 py-2.5">
           <span>Google</span>
           {user.google ? (
             <span className="flex items-center gap-3">
               <span className="font-medium text-primary">Connected</span>
-              <Button variant="outline" size="icon-sm" className="w-auto px-3 text-sm" disabled={busy || !user.hasPassword} onClick={unlink} title={user.hasPassword ? undefined : "Set a password first"}>
+              <Button variant="outline" size="icon-sm" className="w-auto px-3 text-sm" disabled={busy || (!user.hasPassword && passkeyCount < 1)} onClick={unlink} title={user.hasPassword || passkeyCount > 0 ? undefined : "Set a password or add a passkey first"}>
                 Disconnect
               </Button>
             </span>
@@ -464,8 +471,8 @@ function GoogleSection({ user, googleEnabled, onChange }: { user: PublicUser; go
           )}
         </li>
       </ul>
-      {user.google && !user.hasPassword && (
-        <p className="mt-2 text-xs text-muted-foreground">Add a password above to be able to disconnect Google.</p>
+      {user.google && !user.hasPassword && passkeyCount < 1 && (
+        <p className="mt-2 text-xs text-muted-foreground">Add a password or a passkey to be able to disconnect Google.</p>
       )}
       {!user.google && googleEnabled && (
         <p className="mt-2 text-xs text-muted-foreground">Connecting requires the Google account that uses this same email address.</p>

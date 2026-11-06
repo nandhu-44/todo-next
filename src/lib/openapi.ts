@@ -55,7 +55,7 @@ export function openApiSpec(origin: string) {
     security: [{ bearerAuth: [] }],
     paths,
     components: {
-      securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", description: "API key starting with tdn_" } },
+      securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", description: "API key starting with sk_tdn." } },
       schemas: {
         Todo: todo,
         TodoInput: { type: "object", properties: { title: todo.properties.title, description: todo.properties.description, completed: todo.properties.completed, priority: todo.properties.priority, dueDate: todo.properties.dueDate, tags: todo.properties.tags } },

@@ -41,7 +41,7 @@ export interface ApiKeyDoc {
   id: string;
   userId: string;
   name: string;
-  /** first characters of the key, shown in the UI so keys can be told apart ("tdn_ab12cd34") */
+  /** first characters of the key, shown in the UI so keys can be told apart ("sk_tdn.ab12cd") */
   prefix: string;
   /** sha256 of the full key; the key itself is never stored */
   hash: string;
@@ -52,6 +52,22 @@ export interface ApiKeyDoc {
   /** optional per-key daily request limit (never above the account limit) */
   dailyLimit: number | null;
 }
+/** A WebAuthn credential (passkey). The private key lives on the user's device; we only hold the public key. */
+export interface PasskeyDoc {
+  id: string; // the credential id (base64url), unique across all users
+  userId: string;
+  name: string;
+  publicKey: string; // base64url of the COSE public key
+  counter: number;
+  transports: string[];
+  deviceType: "singleDevice" | "multiDevice"; // multiDevice = synced passkey (iCloud, Google Password Manager…)
+  backedUp: boolean;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+/** A CAPTCHA solution that has been spent (each one works once). `expiresAt` lets old rows be swept. */
+export interface CaptchaUsedDoc { id: string; expiresAt: number }
+
 /** One document per key per UTC day: how many requests it made. */
 export interface ApiUsageDoc {
   id: string; // `${keyId}:${yyyy-mm-dd}`
@@ -77,6 +93,8 @@ export interface DB {
   resets: Collection<ResetDoc>;
   apiKeys: Collection<ApiKeyDoc>;
   apiUsage: Collection<ApiUsageDoc>;
+  passkeys: Collection<PasskeyDoc>;
+  captchaUsed: Collection<CaptchaUsedDoc>;
 }
 
 const matches = <T extends object>(doc: T, q: Partial<T>) =>
@@ -84,15 +102,15 @@ const matches = <T extends object>(doc: T, q: Partial<T>) =>
 
 /* ---------- JSON file store (local dev, no setup) ---------- */
 const FILE = path.join(process.cwd(), "data", "db.json");
-type Shape = { users: UserDoc[]; todos: TodoDoc[]; resets: ResetDoc[]; apiKeys: ApiKeyDoc[]; apiUsage: ApiUsageDoc[] };
+type Shape = { users: UserDoc[]; todos: TodoDoc[]; resets: ResetDoc[]; apiKeys: ApiKeyDoc[]; apiUsage: ApiUsageDoc[]; passkeys: PasskeyDoc[]; captchaUsed: CaptchaUsedDoc[] };
 let lock: Promise<unknown> = Promise.resolve();
 
 async function readFile(): Promise<Shape> {
   try {
     const d = JSON.parse(await fs.readFile(FILE, "utf8"));
-    return { apiKeys: [], apiUsage: [], ...d }; // files written before API keys existed
+    return { apiKeys: [], apiUsage: [], passkeys: [], captchaUsed: [], ...d }; // files written before these collections existed
   } catch {
-    return { users: [], todos: [], resets: [], apiKeys: [], apiUsage: [] };
+    return { users: [], todos: [], resets: [], apiKeys: [], apiUsage: [], passkeys: [], captchaUsed: [] };
   }
 }
 // Serialise every read-modify-write so concurrent requests can't clobber each other.
@@ -227,6 +245,8 @@ async function mongoDb(): Promise<DB> {
     resets: coll<ResetDoc>("resets"),
     apiKeys: coll<ApiKeyDoc>("apiKeys"),
     apiUsage: coll<ApiUsageDoc>("apiUsage"),
+    passkeys: coll<PasskeyDoc>("passkeys"),
+    captchaUsed: coll<CaptchaUsedDoc>("captchaUsed"),
   };
 }
 
@@ -244,6 +264,9 @@ async function ensureIndexes(db: any) {
     db.collection("apiKeys").createIndex({ userId: 1 }),
     db.collection("apiUsage").createIndex({ id: 1 }, { unique: true }),
     db.collection("apiUsage").createIndex({ userId: 1 }),
+    db.collection("passkeys").createIndex({ id: 1 }, { unique: true }),
+    db.collection("passkeys").createIndex({ userId: 1 }),
+    db.collection("captchaUsed").createIndex({ id: 1 }, { unique: true }),
   ]);
 }
 
@@ -280,6 +303,7 @@ function build(): Promise<DB> {
     return mongoDb().then((d) => ({
       users: instrument("users", d.users), todos: instrument("todos", d.todos), resets: instrument("resets", d.resets),
       apiKeys: instrument("apiKeys", d.apiKeys), apiUsage: instrument("apiUsage", d.apiUsage),
+      passkeys: instrument("passkeys", d.passkeys), captchaUsed: instrument("captchaUsed", d.captchaUsed),
     }));
   }
   g.__dbInfo = { kind: "file", connectMs: null, startedAt: Date.now() };
@@ -289,6 +313,8 @@ function build(): Promise<DB> {
     resets: fileCollection("resets"),
     apiKeys: fileCollection("apiKeys", ["hash"]),
     apiUsage: fileCollection("apiUsage"),
+    passkeys: fileCollection("passkeys", ["id"]),
+    captchaUsed: fileCollection("captchaUsed", ["id"]),
   } as DB);
 }
 

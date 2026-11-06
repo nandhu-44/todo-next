@@ -15,7 +15,7 @@ const api = async (key, path, opts = {}) => { const r = await fetch(B+'/api/v1'+
   ok('register', (await sess('/api/auth/register',{method:'POST',body:JSON.stringify({name:'John Doe',email:'john@example.com',password:'password123'})})).status === 201);
   const mk = async (b) => sess('/api/account/keys', { method:'POST', body: JSON.stringify(b) });
   const rw = await mk({ name:'Full access', scopes:['todos:read','todos:write'], expiresInDays:null });
-  ok('create key', rw.status === 201 && /^tdn_[A-Za-z0-9_-]{32}$/.test(rw.body.secret), JSON.stringify(rw.body));
+  ok('create key', rw.status === 201 && /^sk_tdn\.[A-Za-z0-9_-]{64}$/.test(rw.body.secret), JSON.stringify(rw.body));
   const KEY = rw.body.secret;
   ok('key response never contains the hash', !JSON.stringify(rw.body.key).includes('hash'));
   ok('secret is NOT stored on disk (only its hash)', !fs.readFileSync(DB,'utf8').includes(KEY));
@@ -29,9 +29,15 @@ const api = async (key, path, opts = {}) => { const r = await fetch(B+'/api/v1'+
   ok('validation: daily limit above account limit rejected', (await mk({ name:'x', scopes:['todos:read'], dailyLimit: 999 })).status === 400);
   const RO = ro.body.secret;
 
+  // keys issued before the sk_tdn. format ("tdn_" + 32 chars) must keep working: plant one directly in the database file
+  { const crypto = require('crypto'); const legacy = 'tdn_' + 'L'.repeat(32); const d0 = JSON.parse(fs.readFileSync(DB,'utf8'));
+    d0.apiKeys.push({ id:'legacy-key-id', userId: d0.users[0].id, name:'Legacy', prefix:'tdn_LLLLLLLL', hash: crypto.createHash('sha256').update(legacy).digest('hex'), scopes:['todos:read'], createdAt:new Date().toISOString(), lastUsedAt:null, expiresAt:null, dailyLimit:null });
+    fs.writeFileSync(DB, JSON.stringify(d0)); ok('old-format (tdn_) keys still authenticate', (await api(legacy,'/me')).status === 200);
+    d0.apiKeys = d0.apiKeys.filter(k => k.id !== 'legacy-key-id'); fs.writeFileSync(DB, JSON.stringify(d0)); }
+
   console.log('--- authentication');
   ok('no key -> 401 unauthorized', (await api(null,'/todos')).status === 401);
-  const junk = await api('tdn_'+'a'.repeat(32), '/todos'); ok('unknown (well-formed) key -> 401 invalid_key', junk.status === 401 && junk.body.error.code === 'invalid_key');
+  const junk = await api('sk_tdn.'+'a'.repeat(64), '/todos'); ok('unknown (well-formed) key -> 401 invalid_key', junk.status === 401 && junk.body.error.code === 'invalid_key');
   ok('malformed key -> 401', (await api('hello','/todos')).status === 401);
   const xk = await fetch(B+'/api/v1/me', { headers: { 'X-API-Key': KEY } }); ok('X-API-Key header also works', xk.status === 200);
   ok('read-only key cannot POST -> 403 insufficient_scope', (await api(RO,'/todos',{method:'POST',body:JSON.stringify({title:'x'})})).body?.error?.code === 'insufficient_scope');

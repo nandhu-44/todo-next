@@ -6,13 +6,20 @@ import { allow, clientIp, hit } from "./rateLimit";
 export const SCOPES = ["todos:read", "todos:write"] as const;
 export type Scope = (typeof SCOPES)[number];
 
-const KEY_FORMAT = /^tdn_[A-Za-z0-9_-]{32}$/;
+/** `sk_tdn.` + 64 random characters (384 bits). Keys issued before this format ("tdn_" + 32 characters) keep working. */
+export const KEY_PREFIX = "sk_tdn.";
+const KEY_FORMAT = /^(?:sk_tdn\.[A-Za-z0-9_-]{64}|tdn_[A-Za-z0-9_-]{32})$/;
 export const hashKey = (secret: string) => createHash("sha256").update(secret).digest("hex");
 
-/** A new random key (192 bits). Only its hash is stored, so it can be shown to the user exactly once. */
+/**
+ * A new random key: 48 bytes (384 bits) from the system CSPRNG, base64url-encoded to 64 characters. Guessing one is
+ * far beyond any computer, and requests with unknown keys are rate-limited too. Only the SHA-256 of the key is
+ * stored, so it can be shown to the user exactly once.
+ */
 export function generateKey() {
-  const secret = `tdn_${randomBytes(24).toString("base64url")}`;
-  return { secret, prefix: secret.slice(0, 12), hash: hashKey(secret) };
+  const secret = `${KEY_PREFIX}${randomBytes(48).toString("base64url")}`;
+  // the prefix is only for telling keys apart in the UI: "sk_tdn." plus the first 6 random characters
+  return { secret, prefix: secret.slice(0, KEY_PREFIX.length + 6), hash: hashKey(secret) };
 }
 
 export const newKeyId = () => randomUUID();

@@ -29,3 +29,16 @@ export function hit(key: string, max: number, windowMs: number): Hit {
 export const clearLimit = (key: string) => void hits.delete(key);
 
 export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "local";
+
+/* Failed-attempt counters, used to ask for a CAPTCHA only after a few wrong passwords (per instance, best effort). */
+const fails = new Map<string, { n: number; reset: number }>();
+export const failCount = (key: string) => { const e = fails.get(key); return e && e.reset > Date.now() ? e.n : 0; };
+export function bumpFail(key: string, windowMs = 15 * 60_000) {
+  const now = Date.now();
+  const e = fails.get(key);
+  const next = e && e.reset > now ? { n: e.n + 1, reset: e.reset } : { n: 1, reset: now + windowMs };
+  fails.set(key, next);
+  if (fails.size > 5000) for (const [k, v] of fails) if (v.reset < now) fails.delete(k);
+  return next.n;
+}
+export const clearFails = (key: string) => void fails.delete(key);

@@ -25,6 +25,7 @@ export async function DELETE(req: Request) {
 
   const db = await getDb();
   await db.todos.remove({ userId: a.user.id });
+  await db.passkeys.remove({ userId: a.user.id });
   await db.apiKeys.remove({ userId: a.user.id });
   await db.apiUsage.remove({ userId: a.user.id });
   await db.resets.remove({ userId: a.user.id });

@@ -50,8 +50,8 @@ Light and dark palettes are generated from a theme's accent colour, background h
 which `npm test` verifies for every preset in both modes.
 
 ## Public API
-Create keys in *Settings → API access* (shown once, stored only as a SHA-256 hash, optional expiry, read/write permissions, optional lower daily limit) and call `/api/v1`
-with `Authorization: Bearer tdn_…`. Endpoints: `GET/POST /api/v1/todos`, `GET/PATCH/DELETE /api/v1/todos/:id`, `POST /api/v1/todos/clear-completed`, `GET /api/v1/me`, `GET /api/v1/usage`.
+Create keys in *Settings → API access* (`sk_tdn.` plus 64 random characters = 384 bits, shown once, stored only as a SHA-256 hash, optional expiry, read/write permissions, optional lower daily limit) and call `/api/v1`
+with `Authorization: Bearer sk_tdn.…`. Endpoints: `GET/POST /api/v1/todos`, `GET/PATCH/DELETE /api/v1/todos/:id`, `POST /api/v1/todos/clear-completed`, `GET /api/v1/me`, `GET /api/v1/usage`.
 Docs live at `/docs` and the OpenAPI 3.1 spec at `/api/v1/openapi.json`.
 
 Quotas (all configurable, see `.env.example`): 60 requests/minute and 2,000 requests/day per key, 5 keys and 5,000 todos per account. Every response carries `X-RateLimit-*`
@@ -64,3 +64,14 @@ memory per server instance, so on serverless hosting it is a best-effort burst l
 - Slow queries (over 300 ms) and each new instance's connection time are logged (`[db] …`) so they show up in the host's logs.
 - `GET /api/health` is a cheap public check. Set `HEALTH_TOKEN` and call `GET /api/health?deep=1` with `Authorization: Bearer <token>` to see connect time and round-trip latency to the database from the deployed function.
 - Biggest wins on Vercel: put the function region in the **same region as the database** (Project Settings → Functions), and use the standard `mongodb://` connection string rather than `mongodb+srv://` to skip the SRV DNS lookup on cold starts.
+
+## Passkeys
+*Settings → Passkeys* registers a passkey (WebAuthn) so you can sign in with a fingerprint, face or screen lock and no password, from the sign-in page via **Sign in with a passkey**
+(no email needed). The device keeps the private key; only the public key is stored. Sign-in requires user verification (PIN/biometric), so it counts as two factors and skips the TOTP code.
+Passkeys are bound to the site's domain: set `WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGIN` in production, and note that preview deployments (a different domain) can't use passkeys made elsewhere.
+You can't remove your last way to sign in. Implemented with `@simplewebauthn`; challenges live in a short-lived signed cookie and are single-use.
+
+## Bot protection
+Sign-up and password reset always require a security check, and sign-in requires one after 3 wrong passwords for that account from that address. Set `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`
+to use Cloudflare Turnstile. Otherwise a built-in proof-of-work check runs in the background (about 0.1 s in a desktop browser): each solution is signed by the server, expires in 5 minutes
+and works once. It raises the cost of mass sign-ups but is not a real bot detector, since a script solves it in milliseconds; use Turnstile for production. `CAPTCHA_PROVIDER=off` disables it.

@@ -62,9 +62,9 @@ export function Field({ label, icon: Icon, type, ...rest }: FieldProps) {
   );
 }
 
-export function SubmitButton({ loading, children }: { loading: boolean; children: React.ReactNode }) {
+export function SubmitButton({ loading, disabled, children }: { loading: boolean; disabled?: boolean; children: React.ReactNode }) {
   return (
-    <Button type="submit" size="lg" disabled={loading} className="w-full">
+    <Button type="submit" size="lg" disabled={loading || disabled} className="w-full">
       {loading && <Loader2 className="animate-spin" />}
       {children}
     </Button>

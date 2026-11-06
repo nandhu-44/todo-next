@@ -6,6 +6,10 @@ export async function api<T = unknown>(url: string, init?: Omit<RequestInit, "bo
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error || "Something went wrong");
+  if (!res.ok) {
+    const message = (data as { error?: string }).error;
+    // the full response body rides along so callers can read extra flags (e.g. captchaRequired)
+    throw Object.assign(new Error(typeof message === "string" ? message : "Something went wrong"), { data, status: res.status });
+  }
   return data as T;
 }

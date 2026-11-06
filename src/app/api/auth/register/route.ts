@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { createSession, fail, json, toPublic } from "@/lib/auth";
 import { DuplicateError, getDb, type UserDoc } from "@/lib/db";
+import { verifyCaptcha } from "@/lib/captcha";
 import { isEmail, normalizeEmail } from "@/lib/email";
 
 const existsMessage = (hasPassword: boolean) =>
@@ -11,6 +12,8 @@ const existsMessage = (hasPassword: boolean) =>
 
 export async function POST(req: Request) {
   const b = await req.json().catch(() => null);
+  const human = await verifyCaptcha(req, b?.captcha); // first, before any work is done for a possible bot
+  if (!human.ok) return fail(human.message, 400);
   const name = String(b?.name ?? "").trim();
   const email = normalizeEmail(String(b?.email ?? ""));
   const password = String(b?.password ?? "");
