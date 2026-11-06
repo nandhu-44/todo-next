@@ -3,7 +3,7 @@ import { AnimatePresence, Reorder, motion } from "framer-motion";
 import { ArrowDownUp, CalendarDays, Check, ChevronDown, ClipboardList, Eraser, HardDrive, LogOut, Plus, RefreshCw, Search, SearchX, Settings, Sparkles, Tags, X } from "lucide-react";
 import { Popover } from "radix-ui";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { api } from "@/lib/api";
 import { daysUntil } from "@/lib/dates";
 import { readLocal, syncNow, syncSummary, timeAgo, writeLocal } from "@/lib/localStore";
@@ -13,6 +13,7 @@ import type { PublicUser, Todo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import CalendarView from "./CalendarView";
 import Logo from "./Logo";
+import { ProgressBar } from "./NavProgress";
 import Stats from "./Stats";
 import ThemeToggle from "./ThemeToggle";
 import { Button } from "./ui/button";
@@ -41,6 +42,7 @@ const SORTS: { id: Sort; label: string }[] = [
 
 export default function TodoApp({ user }: { user: PublicUser }) {
   const router = useRouter();
+  const [navigating, startNav] = useTransition(); // true while the next page is being fetched
   const [mode, setMode] = useState<Mode>("unknown");
   const [todos, setTodos] = useState<Todo[]>([]);
   const [base, setBase] = useState<Todo[]>([]); // local mode: the server's todos as of the last sync
@@ -73,6 +75,11 @@ export default function TodoApp({ user }: { user: PublicUser }) {
       notify.error((e as Error).message);
     }
   }, []);
+
+  // warm up the settings page so opening it is instant
+  useEffect(() => {
+    router.prefetch("/settings");
+  }, [router]);
 
   // Decide where todos live: a saved local copy means local-only mode, otherwise the server.
   useEffect(() => {
@@ -338,7 +345,8 @@ export default function TodoApp({ user }: { user: PublicUser }) {
   const resetFilters = () => { setFilter("all"); setQuery(""); setTags([]); };
 
   return (
-    <main className="mx-auto max-w-3xl px-3 pb-24 pt-5 sm:px-6">
+    <main className="mx-auto max-w-3xl px-3 pb-24 pt-5 sm:px-6" aria-busy={navigating}>
+      {navigating && <ProgressBar />}
       {/* header */}
       <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -365,7 +373,7 @@ export default function TodoApp({ user }: { user: PublicUser }) {
                 {user.email}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => router.push("/settings")}><Settings /> Account settings</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => startNav(() => router.push("/settings"))}><Settings /> Account settings</DropdownMenuItem>
               <DropdownMenuItem onSelect={logout} className="text-destructive"><LogOut /> Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

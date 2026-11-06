@@ -32,6 +32,7 @@ const config: Config = {
           "0%,100%": { transform: "translate3d(0,0,0) scale(1)" },
           "50%": { transform: "translate3d(40px,-50px,0) scale(1.12)" },
         },
+        "nav-progress": { "0%": { transform: "translateX(-100%)" }, "100%": { transform: "translateX(300%)" } },
         "soft-pulse": { "0%,100%": { opacity: "1" }, "50%": { opacity: "0.7" } },
       },
       animation: {

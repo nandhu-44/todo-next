@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import { AlertTriangle, ArrowLeft, Check, Copy, Download, HardDrive, KeyRound, Loader2, Lock, RefreshCw, ShieldCheck, ShieldOff, Trash2, User } from "lucide-react";
 import Logo from "./Logo";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { clearLocal, enableLocalMode, readLocal, syncNow, syncSummary, timeAgo, type LocalState } from "@/lib/localStore";
@@ -12,6 +12,7 @@ import type { PublicUser } from "@/lib/types";
 import { AUTH_ERRORS, GoogleButton } from "./AuthShell";
 import { OtpInput } from "./OtpInput";
 import AppearanceSettings from "./AppearanceSettings";
+import { ProgressBar } from "./NavProgress";
 import { Section } from "./SettingsSection";
 import ThemeToggle from "./ThemeToggle";
 import { Button } from "./ui/button";
@@ -19,6 +20,17 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, Dialog, DialogConte
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
+
+/** "Back to todos" label that shows a spinner and a progress bar while the next page loads. */
+function BackLabel() {
+  const { pending } = useLinkStatus();
+  return (
+    <>
+      {pending ? <Loader2 className="animate-spin" /> : <ArrowLeft />} Back to todos
+      {pending && <ProgressBar />}
+    </>
+  );
+}
 
 export default function SettingsView({ initial, googleEnabled, error, linked }: { initial: PublicUser; googleEnabled: boolean; error?: string; linked?: boolean }) {
   const [user, setUser] = useState(initial);
@@ -34,7 +46,7 @@ export default function SettingsView({ initial, googleEnabled, error, linked }: 
     <main className="mx-auto max-w-2xl px-3 pb-24 pt-5 sm:px-6">
       <header className="flex items-center justify-between">
         <Button asChild variant="ghost">
-          <Link href="/"><ArrowLeft /> Back to todos</Link>
+          <Link href="/"><BackLabel /></Link>
         </Button>
         <ThemeToggle />
       </header>
@@ -512,10 +524,17 @@ function StorageSection({ userId }: { userId: string }) {
 
   return (
     <Section icon={HardDrive} title="Local-only mode" description="Keep your todos on this device and upload them only when you press Sync.">
+      {!ready ? (
+        <div className="flex animate-soft-pulse items-center justify-between gap-4" aria-busy="true" aria-label="Loading local-only setting">
+          <div className="h-4 w-10 rounded bg-muted" />
+          <div className="h-6 w-11 rounded-full bg-muted" />
+        </div>
+      ) : (
       <div className="flex items-center justify-between gap-4">
         <Label htmlFor="local-mode" className="text-sm">{state ? "On" : "Off"}</Label>
         <Switch id="local-mode" checked={!!state} disabled={!ready || busy} onCheckedChange={(on) => (on ? setConfirmOn(true) : turnOff())} aria-label="Local-only mode" />
       </div>
+      )}
       {state && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/60 px-4 py-3 text-sm">
           <span className="text-muted-foreground">
