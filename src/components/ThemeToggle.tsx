@@ -44,7 +44,11 @@ export default function ThemeToggle() {
 
   // Read the saved choice after mount (the inline script has already applied it to <html>).
   useEffect(() => {
-    setTheme(stored());
+    const t = stored();
+    setTheme(t);
+    // Re-assert the saved theme on <html>. If React ever has to re-render the whole document (after a hydration
+    // problem) it drops classes that were added outside React, which silently turned a saved dark theme light.
+    apply(t);
     setOsDark(prefersDark());
     setMounted(true);
   }, []);

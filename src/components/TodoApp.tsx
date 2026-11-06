@@ -341,8 +341,13 @@ export default function TodoApp({ user, initialTodos }: { user: PublicUser; init
   const shown = dragList ?? visible; // what the list displays (mid-drag it is the arrangement in progress)
   const canDrag = view === "list" && visible.length > 1;
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  // The greeting depends on the viewer's local time, which the server cannot know (it runs in another timezone).
+  // Rendering it during the first paint caused a server/browser mismatch (React error #418), so it is filled in after mount.
+  const [greeting, setGreeting] = useState("Welcome back");
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
+  }, []);
   const completedCount = stats.done;
   const resetFilters = () => { setFilter("all"); setQuery(""); setTags([]); };
 
